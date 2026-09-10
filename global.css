@@ -53,6 +53,38 @@
 }
 
 @layer components {
+    .onboarding-safe-area {
+        @apply flex-1 bg-accent;
+    }
+
+    .onboarding-content {
+        @apply flex-1 justify-between pb-16;
+    }
+
+    .onboarding-pattern {
+        @apply aspect-[440/551] w-full;
+    }
+
+    .onboarding-copy {
+        @apply items-center px-5;
+    }
+
+    .onboarding-title {
+        @apply text-center text-4xl font-sans-extrabold text-white;
+    }
+
+    .onboarding-subtitle {
+        @apply mt-3 text-center text-lg font-sans text-white;
+    }
+
+    .onboarding-button {
+        @apply mx-4 min-h-16 items-center justify-center rounded-full bg-white px-6;
+    }
+
+    .onboarding-button-text {
+        @apply text-xl font-sans-bold text-primary;
+    }
+
     .tabs-icon {
         @apply size-12 items-center justify-center;
     }

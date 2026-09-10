@@ -20,6 +20,8 @@ Update this file after every meaningful implementation change.
 - Auth route group scaffolded: Sign In, Sign Up (`app/(auth)/`)
 - Dynamic subscription detail route scaffolded: `app/(tabs)/subscriptions/[id].tsx`
 - Onboarding screen scaffolded: `app/onboarding.tsx`
+- Onboarding splash screen implemented with the supplied pattern artwork, responsive full-screen layout, and Get Started navigation to Sign Up
+- Root index route added to open onboarding on app launch
 - All six AI context files populated for this project
 
 ## In Progress
@@ -35,13 +37,12 @@ Update this file after every meaningful implementation change.
 5. Update root `app/_layout.tsx` to wrap with both providers and handle auth-gating
 6. Build Home screen (`app/(tabs)/index.tsx`) — header, balance card, upcoming row, active list
 7. Build Add Subscription modal (`components/AddSubscriptionModal.tsx`)
-8. Build Onboarding screen (`app/onboarding.tsx`)
-9. Build Sign In screen (`app/(auth)/sign-in.tsx`)
-10. Build Sign Up screen (`app/(auth)/sign-up.tsx`)
-11. Build Subscriptions tab (`app/(tabs)/subscriptions.tsx`) — full list view
-12. Build Subscription detail screen (`app/(tabs)/subscriptions/[id].tsx`)
-13. Build Insights tab (`app/(tabs)/insights.tsx`) — category breakdown
-14. Build Settings tab (`app/(tabs)/settings.tsx`) — profile and sign-out
+8. Build Sign In screen (`app/(auth)/sign-in.tsx`)
+9. Build Sign Up screen (`app/(auth)/sign-up.tsx`)
+10. Build Subscriptions tab (`app/(tabs)/subscriptions.tsx`) — full list view
+11. Build Subscription detail screen (`app/(tabs)/subscriptions/[id].tsx`)
+12. Build Insights tab (`app/(tabs)/insights.tsx`) — category breakdown
+13. Build Settings tab (`app/(tabs)/settings.tsx`) — profile and sign-out
 
 ## Open Questions
 
