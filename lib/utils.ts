@@ -1,3 +1,6 @@
+
+import dayjs from "dayjs";
+
 /**
  * Formats a given value as a currency string.
  * Defaults to South African Rand (ZAR) formatting.
@@ -31,8 +34,19 @@ export const formatCurrency = (value: number | string, currency: string = "ZAR")
         safeValue = parsed;
       }
     }
-    
+
     const prefix = currency === "ZAR" ? "R" : `${currency} `;
     return `${prefix}${safeValue.toFixed(2)}`;
   }
+};
+
+export const formatSubscriptionDateTime = (value?: string): string => {
+  if (!value) return "Not provided";
+  const parsedDate = dayjs(value);
+  return parsedDate.isValid() ? parsedDate.format("MM/DD/YYYY") : "Not provided";
+};
+
+export const formatStatusLabel = (value?: string): string => {
+  if (!value) return "Unknown";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 };
