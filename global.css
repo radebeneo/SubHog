@@ -279,6 +279,10 @@
         @apply mt-2 items-center;
     }
 
+    .auth-brand-logo {
+        @apply mb-7 h-24 w-64;
+    }
+
     .auth-logo-wrap {
         @apply mb-7 flex-row items-center gap-3;
     }
@@ -325,6 +329,22 @@
 
     .auth-input {
         @apply rounded-2xl border border-border bg-background px-4 py-4 text-base font-sans-medium text-primary;
+    }
+
+    .auth-input-wrap {
+        @apply relative;
+    }
+
+    .auth-input-password {
+        @apply pr-18;
+    }
+
+    .auth-password-toggle {
+        @apply absolute bottom-0 right-4 top-0 justify-center;
+    }
+
+    .auth-password-toggle-text {
+        @apply text-sm font-sans-bold text-accent;
     }
 
     .auth-input-error {
@@ -381,6 +401,58 @@
 
     .auth-link {
         @apply text-sm font-sans-bold text-accent;
+    }
+
+    .auth-notice {
+        @apply rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3;
+    }
+
+    .auth-notice-text {
+        @apply text-sm font-sans-medium text-destructive;
+    }
+
+    .auth-trust-copy {
+        @apply mx-auto mt-5 max-w-[300px] text-center text-xs font-sans-medium text-muted-foreground;
+    }
+
+    .settings-safe-area {
+        @apply flex-1 bg-background px-5 pt-4;
+    }
+
+    .settings-title {
+        @apply text-3xl font-sans-extrabold text-primary;
+    }
+
+    .settings-subtitle {
+        @apply mt-2 text-base font-sans-medium text-muted-foreground;
+    }
+
+    .settings-account-card {
+        @apply mt-8 flex-row items-center rounded-3xl border border-border bg-card p-5;
+    }
+
+    .settings-avatar {
+        @apply size-14 items-center justify-center rounded-full bg-accent;
+    }
+
+    .settings-avatar-text {
+        @apply text-xl font-sans-bold text-primary;
+    }
+
+    .settings-account-copy {
+        @apply ml-4 min-w-0 flex-1;
+    }
+
+    .settings-account-label {
+        @apply text-sm font-sans-semibold text-muted-foreground;
+    }
+
+    .settings-account-email {
+        @apply mt-1 text-base font-sans-bold text-primary;
+    }
+
+    .settings-sign-out {
+        @apply mt-5;
     }
 
     .modal-overlay {

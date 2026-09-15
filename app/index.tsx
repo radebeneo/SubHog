@@ -1,5 +1,10 @@
-import { Redirect } from 'expo-router';
+import { useAuth } from "@clerk/expo";
+import { Redirect } from "expo-router";
 
 export default function Index() {
-    return <Redirect href="/(tabs)" />;
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) return null;
+
+  return <Redirect href={isSignedIn ? "/(tabs)" : "/(auth)/sign-in"} />;
 }
