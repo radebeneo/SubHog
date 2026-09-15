@@ -395,6 +395,10 @@
         @apply mt-5 flex-row items-center justify-center gap-1;
     }
 
+    .auth-inline-action {
+        @apply -mt-1 flex-row justify-end;
+    }
+
     .auth-link-copy {
         @apply text-sm font-sans-medium text-muted-foreground;
     }
