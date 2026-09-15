@@ -2,13 +2,10 @@ import "@/global.css";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { useFonts } from "expo-font";
-import { SplashScreen, Stack } from "expo-router";
-import { useEffect } from "react";
+import { Stack } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-
-void SplashScreen.preventAutoHideAsync();
 
 if (!publishableKey) {
   throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not configured");
@@ -16,12 +13,6 @@ if (!publishableKey) {
 
 function RootNavigator() {
   const { isLoaded, isSignedIn } = useAuth();
-
-  useEffect(() => {
-    if (isLoaded) {
-      void SplashScreen.hideAsync();
-    }
-  }, [isLoaded]);
 
   if (!isLoaded) {
     return (
@@ -55,14 +46,14 @@ export default function RootLayout() {
     "PlusJakartaSans-Light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
   });
 
-  useEffect(() => {
-    if (fontError) {
-      void SplashScreen.hideAsync();
-    }
-  }, [fontError]);
-
   if (fontError) throw fontError;
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#000000" />
+      </View>
+    );
+  }
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
