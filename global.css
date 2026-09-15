@@ -17,12 +17,12 @@
     --color-destructive: #dc2626;
     --color-subscription: #8fd1bd;
 
-    --font-sans: sans-regular;
-    --font-sans-bold: sans-bold;
-    --font-sans-medium: sans-medium;
-    --font-sans-semibold: sans-semibold;
-    --font-sans-extrabold: sans-extrabold;
-    --font-sans-light: sans-light;
+    --font-sans: "PlusJakartaSans-Regular";
+    --font-sans-bold: "PlusJakartaSans-Bold";
+    --font-sans-medium: "PlusJakartaSans-Medium";
+    --font-sans-semibold: "PlusJakartaSans-SemiBold";
+    --font-sans-extrabold: "PlusJakartaSans-ExtraBold";
+    --font-sans-light: "PlusJakartaSans-Light";
 
     --spacing-0: 0px;
     --spacing-1: 4px;
@@ -44,12 +44,6 @@
     --spacing-24: 96px;
     --spacing-30: 120px;
 
-    --font-sans: sans-regular;
-    --font-sans-light: sans-light;
-    --font-sans-medium: sans-medium;
-    --font-sans-semibold: sans-semibold;
-    --font-sans-bold: sans-bold;
-    --font-sans-extrabold: sans-extrabold;
 }
 
 @layer components {
