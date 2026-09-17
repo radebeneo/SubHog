@@ -73,6 +73,8 @@ const Subscriptions = () => {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           ListEmptyComponent={
             <Text className="home-empty-state">No subscriptions found.</Text>
           }
