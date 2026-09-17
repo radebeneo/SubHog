@@ -2,13 +2,10 @@ import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
-import {
-    HOME_BALANCE,
-    HOME_SUBSCRIPTIONS,
-    UPCOMING_SUBSCRIPTIONS,
-} from "@/constants/data";
+import { HOME_BALANCE, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
+import { useSubscriptions } from "@/context/SubscriptionContext";
 import "@/global.css";
 import { posthog } from "@/lib/posthog";
 import { formatCurrency } from "@/lib/utils";
@@ -25,8 +22,7 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const [subscriptions, setSubscriptions] =
-    useState<Subscription[]>(HOME_SUBSCRIPTIONS);
+  const { subscriptions, addSubscription } = useSubscriptions();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const { user } = useUser();
   const displayName =
@@ -120,12 +116,7 @@ export default function App() {
       <CreateSubscriptionModal
         visible={isCreateModalVisible}
         onClose={() => setIsCreateModalVisible(false)}
-        onCreate={(subscription) => {
-          setSubscriptions((currentSubscriptions) => [
-            subscription,
-            ...currentSubscriptions,
-          ]);
-        }}
+        onCreate={addSubscription}
       />
     </SafeAreaView>
   );

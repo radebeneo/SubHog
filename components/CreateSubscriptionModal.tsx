@@ -3,18 +3,19 @@ import clsx from "clsx";
 import dayjs from "dayjs";
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 const categories = [
   "Entertainment",
+  "Gaming",
   "AI Tools",
   "Developer Tools",
   "Design",
@@ -26,6 +27,7 @@ const categories = [
 
 const categoryColors: Record<(typeof categories)[number], string> = {
   Entertainment: "#f5c542",
+  Gaming: "#f2cc8f",
   "AI Tools": "#b8d4e3",
   "Developer Tools": "#e8def8",
   Design: "#b8e8d0",

@@ -1,5 +1,5 @@
 import SubscriptionCard from "@/components/SubscriptionCard";
-import { HOME_SUBSCRIPTIONS } from "@/constants/data";
+import { useSubscriptions } from "@/context/SubscriptionContext";
 import { posthog } from "@/lib/posthog";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -20,8 +20,9 @@ const Subscriptions = () => {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+  const { subscriptions: allSubscriptions } = useSubscriptions();
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const subscriptions = HOME_SUBSCRIPTIONS.filter((subscription) => {
+  const subscriptions = allSubscriptions.filter((subscription) => {
     if (!normalizedQuery) return true;
 
     return [
