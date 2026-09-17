@@ -1,3 +1,4 @@
+import { posthog } from "@/lib/posthog";
 import { findSubscriptionIcon } from "@/lib/subscription-icons";
 import clsx from "clsx";
 import dayjs from "dayjs";
@@ -98,6 +99,14 @@ const CreateSubscriptionModal = ({
       };
 
       onCreate(subscription);
+
+      posthog?.capture("subscription_created", {
+        subscription_name: name.trim(),
+        subscription_price: price,
+        subsccription_frequency: frequency,
+        subscription_category: category,
+      });
+
       resetForm();
       onClose();
     } finally {
