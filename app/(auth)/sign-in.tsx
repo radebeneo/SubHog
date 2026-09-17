@@ -1,4 +1,5 @@
 import images from "@/constants/images";
+import { posthog } from "@/lib/posthog";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -46,11 +47,16 @@ const SignIn = () => {
     });
 
     if (error) {
+      posthog?.captureException(error, { auth_flow: "sign_in" });
       console.error(JSON.stringify(error, null, 2));
       return;
     }
 
     if (signIn.status === "complete") {
+      posthog?.capture("user_signed_in", {
+        auth_method: "password",
+        required_verification: false,
+      });
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
@@ -93,6 +99,10 @@ const SignIn = () => {
     await signIn.mfa.verifyEmailCode({ code });
 
     if (signIn.status === "complete") {
+      posthog?.capture("user_signed_in", {
+        auth_method: "password",
+        required_verification: true,
+      });
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {

@@ -1,9 +1,11 @@
 import "@/global.css";
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { posthog } from "@/lib/posthog";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { useFonts } from "expo-font";
-import { SplashScreen, Stack } from "expo-router";
-import { useEffect } from "react";
+import { SplashScreen, Stack, usePathname } from "expo-router";
+import { useEffect, useRef } from "react";
+import { PostHogProvider } from "posthog-react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,6 +35,9 @@ function RootLayoutContent() {
     "PlusJakartaSans-Light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
   });
   const { isLoaded } = useAuth();
+  const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
+  const pathname = usePathname();
+  const previousPathname = useRef<string | null>(null);
 
   useEffect(() => {
     if (fontsLoaded && isLoaded) {
@@ -40,7 +45,40 @@ function RootLayoutContent() {
     }
   }, [fontsLoaded, isLoaded]);
 
+  useEffect(() => {
+    if (!posthog || previousPathname.current === pathname) return;
+
+    posthog.screen(pathname, {
+      previous_screen: previousPathname.current,
+    });
+    previousPathname.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!posthog || !isUserLoaded) return;
+
+    if (isSignedIn && user) {
+      posthog.identify(user.id, {
+        email: user.primaryEmailAddress?.emailAddress,
+        name: user.fullName,
+      });
+    } else {
+      posthog.reset();
+    }
+  }, [isSignedIn, isUserLoaded, user]);
+
   if (!fontsLoaded || !isLoaded) return null;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  const navigation = <Stack screenOptions={{ headerShown: false }} />;
+
+  if (!posthog) return navigation;
+
+  return (
+    <PostHogProvider
+      client={posthog}
+      autocapture={{ captureScreens: false, captureTouches: true }}
+    >
+      {navigation}
+    </PostHogProvider>
+  );
 }

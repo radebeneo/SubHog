@@ -1,4 +1,5 @@
 import images from "@/constants/images";
+import { posthog } from "@/lib/posthog";
 import { useAuth, useSignUp } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -59,6 +60,7 @@ const SignUp = () => {
     });
 
     if (error) {
+      posthog?.captureException(error, { auth_flow: "sign_up" });
       console.error(JSON.stringify(error, null, 2));
       return;
     }
@@ -75,6 +77,10 @@ const SignUp = () => {
     });
 
     if (signUp.status === "complete") {
+      posthog?.capture("user_signed_up", {
+        auth_method: "password",
+        verification_method: "email_code",
+      });
       await signUp.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
