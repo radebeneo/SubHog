@@ -1,10 +1,11 @@
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import {
-  HOME_BALANCE,
-  HOME_SUBSCRIPTIONS,
-  UPCOMING_SUBSCRIPTIONS,
+    HOME_BALANCE,
+    HOME_SUBSCRIPTIONS,
+    UPCOMING_SUBSCRIPTIONS,
 } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
@@ -15,7 +16,7 @@ import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
 import { useState } from "react";
-import { FlatList, Image, Text, View } from "react-native";
+import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -24,6 +25,9 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+  const [subscriptions, setSubscriptions] =
+    useState<Subscription[]>(HOME_SUBSCRIPTIONS);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const { user } = useUser();
   const displayName =
     user?.firstName || user?.emailAddresses[0]?.emailAddress || "Subscriber";
@@ -44,7 +48,13 @@ export default function App() {
                 <Text className="home-user-name">{displayName}</Text>
               </View>
 
-              <Image source={icons.add} className="home-add-icon" />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add subscription"
+                onPress={() => setIsCreateModalVisible(true)}
+              >
+                <Image source={icons.add} className="home-add-icon" />
+              </Pressable>
             </View>
 
             <View className="home-balance-card">
@@ -81,7 +91,7 @@ export default function App() {
             <ListHeading title="All Subscriptions" />
           </>
         )}
-        data={HOME_SUBSCRIPTIONS}
+        data={subscriptions}
         renderItem={({ item }) => (
           <SubscriptionCard
             {...item}
@@ -106,6 +116,16 @@ export default function App() {
         extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}
         contentContainerClassName="pb-20"
+      />
+      <CreateSubscriptionModal
+        visible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onCreate={(subscription) => {
+          setSubscriptions((currentSubscriptions) => [
+            subscription,
+            ...currentSubscriptions,
+          ]);
+        }}
       />
     </SafeAreaView>
   );
