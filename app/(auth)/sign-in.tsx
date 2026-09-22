@@ -1,18 +1,18 @@
 import images from "@/constants/images";
-import { posthog } from "@/lib/posthog";
+import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
@@ -53,10 +53,13 @@ const SignIn = () => {
     }
 
     if (signIn.status === "complete") {
-      posthog?.capture("user_signed_in", {
-        auth_method: "password",
-        required_verification: false,
-      });
+      posthog?.capture(
+        "user_signed_in",
+        sanitizePostHogProperties({
+          auth_method: "password",
+          required_verification: false,
+        }),
+      );
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
@@ -99,10 +102,13 @@ const SignIn = () => {
     await signIn.mfa.verifyEmailCode({ code });
 
     if (signIn.status === "complete") {
-      posthog?.capture("user_signed_in", {
-        auth_method: "password",
-        required_verification: true,
-      });
+      posthog?.capture(
+        "user_signed_in",
+        sanitizePostHogProperties({
+          auth_method: "password",
+          required_verification: true,
+        }),
+      );
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {

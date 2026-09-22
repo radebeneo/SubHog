@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "files": [
+    "lib/api-client.ts",
+    "lib/api-client.test.ts",
+    "lib/api-errors.ts",
+    "lib/api-fixtures.test.ts",
+    "lib/api-types.ts",
+    "lib/clerk-token.ts",
+    "lib/posthog-config.ts",
+    "lib/posthog-config.test.ts"
+  ]
+}

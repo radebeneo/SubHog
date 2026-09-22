@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
+    "test:api": "node --experimental-strip-types --test lib/api-client.test.ts lib/posthog-config.test.ts"
   },
   "dependencies": {
     "@clerk/expo": "^4.6.6",

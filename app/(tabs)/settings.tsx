@@ -1,4 +1,4 @@
-import { posthog } from "@/lib/posthog";
+import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useAuth } from "@clerk/expo";
 import { styled } from "nativewind";
 import { Pressable, Text } from "react-native";
@@ -12,7 +12,10 @@ const Settings = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      posthog?.capture("user_signed_out", { source: "settings" });
+      posthog?.capture(
+        "user_signed_out",
+        sanitizePostHogProperties({ source: "settings" }),
+      );
       await posthog?.flush();
       posthog?.reset();
     } catch (error) {

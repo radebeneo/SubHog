@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Foundation / Scaffolding — Setting up routing, context, and navigation structure
+- Startup and Optional Analytics Stabilization — handling optional PostHog config, startup failure states, and typed analytics payloads
 
 ## Current Goal
 
-- Implement SubscriptionContext and AuthContext providers, then build the Home dashboard screen UI
+- Validate startup reliability and analytics safety without breaking Clerk-required auth bootstrap
 
 ## Completed
 
@@ -27,6 +27,18 @@ Update this file after every meaningful implementation change.
 ## In Progress
 
 - None
+
+## Completed
+
+- EXPO-01: optional PostHog config is now non-fatal in development with a concise warning instead of a thrown error
+- Root app startup handles font loading and splash dismissal explicitly, with a visible failure state for actual startup errors
+- Manual screen tracking remains active while automatic PostHog screen capture remains disabled via configured provider settings
+- Analytics payloads have been sanitized and typed to avoid invalid optional values and unsupported payload fields
+- `.env.example` documents the actual public PostHog env names alongside the required Clerk key
+- Focused PostHog config validation tests pass in Node without contacting external services
+- CONTRACT-01 revision 2.1 client DTO validation is aligned for the owned subscription list
+- API client recovery coordinates concurrent reads, rejects stale or cancelled responses, limits reads to one replay, never replays mutations, and redacts observed credentials
+- Reproducible API/test typechecking is available through `npm run typecheck:api`
 
 ## Next Up
 

@@ -1,6 +1,6 @@
 import SubscriptionCard from "@/components/SubscriptionCard";
 import { useSubscriptions } from "@/context/SubscriptionContext";
-import { posthog } from "@/lib/posthog";
+import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { styled } from "nativewind";
 import { useState } from "react";
 import {
@@ -61,12 +61,15 @@ const Subscriptions = () => {
               expanded={expandedSubscriptionId === item.id}
               onPress={() => {
                 const isExpanding = expandedSubscriptionId !== item.id;
-                posthog?.capture("subscription_details_toggled", {
-                  subscription_id: item.id,
-                  is_expanded: isExpanding,
-                  category: item.category ?? "",
-                  subscription_status: item.status ?? "",
-                });
+                posthog?.capture(
+                  "subscription_details_toggled",
+                  sanitizePostHogProperties({
+                    subscription_id: item.id,
+                    is_expanded: isExpanding,
+                    category: item.category,
+                    subscription_status: item.status,
+                  }),
+                );
                 setExpandedSubscriptionId(isExpanding ? item.id : null);
               }}
             />

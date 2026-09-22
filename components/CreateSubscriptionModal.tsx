@@ -1,17 +1,17 @@
-import { posthog } from "@/lib/posthog";
+import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { findSubscriptionIcon } from "@/lib/subscription-icons";
 import clsx from "clsx";
 import dayjs from "dayjs";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 const categories = [
@@ -100,12 +100,16 @@ const CreateSubscriptionModal = ({
 
       onCreate(subscription);
 
-      posthog?.capture("subscription_created", {
-        subscription_name: name.trim(),
-        subscription_price: price,
-        subsccription_frequency: frequency,
-        subscription_category: category,
-      });
+      posthog?.capture(
+        "subscription_created",
+        sanitizePostHogProperties({
+          subscription_name: name.trim(),
+          subscription_price: numericPrice,
+          subscription_frequency: frequency,
+          subscription_category: category,
+          currency: "ZAR",
+        }),
+      );
 
       resetForm();
       onClose();

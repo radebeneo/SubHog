@@ -1,18 +1,18 @@
 import images from "@/constants/images";
-import { posthog } from "@/lib/posthog";
+import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useAuth, useSignUp } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
@@ -77,10 +77,13 @@ const SignUp = () => {
     });
 
     if (signUp.status === "complete") {
-      posthog?.capture("user_signed_up", {
-        auth_method: "password",
-        verification_method: "email_code",
-      });
+      posthog?.capture(
+        "user_signed_up",
+        sanitizePostHogProperties({
+          auth_method: "password",
+          verification_method: "email_code",
+        }),
+      );
       await signUp.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
