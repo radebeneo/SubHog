@@ -19,10 +19,47 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
+        required: [
+            function requireLegacyPassword() {
+                return !this.identityProvider && !this.providerSubject;
+            },
+            'Password is required',
+        ],
         minLength: 6,
-    }
+    },
+    identityProvider: {
+        type: String,
+        enum: ['clerk'],
+        immutable: true,
+        required: function requireProviderForSubject() {
+            return Boolean(this.providerSubject);
+        },
+    },
+    providerSubject: {
+        type: String,
+        trim: true,
+        immutable: true,
+        required: function requireSubjectForProvider() {
+            return Boolean(this.identityProvider);
+        },
+    },
 },{ timestamps: true });
+
+userSchema.path('password').validate(function rejectProviderPassword(password) {
+    return !(this.identityProvider && password);
+}, 'Provider-associated users cannot have a password');
+
+userSchema.index(
+    { identityProvider: 1, providerSubject: 1 },
+    {
+        name: 'unique_provider_subject',
+        unique: true,
+        partialFilterExpression: {
+            identityProvider: { $type: 'string' },
+            providerSubject: { $type: 'string' },
+        },
+    },
+);
 
 export const serializeUser = (user) => {
     if (!user) return null;

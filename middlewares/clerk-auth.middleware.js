@@ -1,15 +1,22 @@
 import { createClerkVerifier } from '../services/clerk-verifier.js';
 import { createClerkVerifierConfig } from '../config/clerk.js';
 
-const clerkVerifier = createClerkVerifier(createClerkVerifierConfig());
+let clerkVerifier;
 
-const clerkAuthorize = async (req, res, next) => {
+const verifyWithConfiguredClerk = (authorization) => {
+    clerkVerifier ||= createClerkVerifier(createClerkVerifierConfig());
+    return clerkVerifier(authorization);
+};
+
+export const createClerkAuthorize = (verify = verifyWithConfiguredClerk) => async (req, res, next) => {
     try {
-        req.providerIdentity = await clerkVerifier(req.headers.authorization);
+        req.providerIdentity = await verify(req.headers.authorization);
         return next();
     } catch (error) {
         return next(error);
     }
 };
+
+const clerkAuthorize = createClerkAuthorize();
 
 export default clerkAuthorize;

@@ -97,6 +97,72 @@ test('sign-in response omits password hash', async () => {
   }
 });
 
+test('legacy sign-up ignores client-supplied provider association fields', async () => {
+  const findOne = User.findOne;
+  const createUser = User.create;
+  const mongoose = (await import('mongoose')).default;
+  const startSession = mongoose.startSession;
+  let createdDocument;
+
+  User.findOne = async () => null;
+  User.create = async ([document]) => {
+    createdDocument = document;
+    return [{ ...document, _id: 'legacy-safe' }];
+  };
+  mongoose.startSession = async () => ({
+    startTransaction() {},
+    commitTransaction() {},
+    abortTransaction() {},
+    endSession() {},
+  });
+
+  try {
+    await signUp({
+      body: {
+        name: 'Legacy Safe',
+        email: 'legacy-safe@example.com',
+        password: 'secret123',
+        identityProvider: 'clerk',
+        providerSubject: 'attacker_subject',
+      },
+    }, makeRes(), (error) => assert.ifError(error));
+
+    assert.equal(createdDocument.identityProvider, undefined);
+    assert.equal(createdDocument.providerSubject, undefined);
+  } finally {
+    User.findOne = findOne;
+    User.create = createUser;
+    mongoose.startSession = startSession;
+  }
+});
+
+test('provider-associated users cannot sign in through legacy password authentication', async () => {
+  const original = User.findOne;
+  User.findOne = async () => ({
+    _id: 'provider-user',
+    name: 'Provider User',
+    email: 'provider@example.com',
+    identityProvider: 'clerk',
+    providerSubject: 'user_provider',
+  });
+
+  try {
+    let nextError;
+    await signIn(
+      { body: { email: 'provider@example.com', password: 'anything' } },
+      makeRes(),
+      (error) => {
+        nextError = error;
+      },
+    );
+
+    assert.equal(nextError.statusCode, 401);
+    assert.equal(nextError.message, 'Invalid password');
+  } finally {
+    User.findOne = original;
+  }
+});
+
 test('user serialization only exposes the public allowlist', () => {
   const user = {
     _id: 'user-public',
@@ -107,6 +173,8 @@ test('user serialization only exposes the public allowlist', () => {
     password: 'hashed-password',
     internalRole: 'admin',
     resetToken: 'private-token',
+    identityProvider: 'clerk',
+    providerSubject: 'user_public',
   };
 
   assert.deepEqual(serializeUser(user), {

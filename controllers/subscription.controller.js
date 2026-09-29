@@ -1,6 +1,7 @@
 import Subscription from "../models/subscription.model.js";
 import {workflowClient} from "../config/upstash.js";
 import {SERVER_URL} from "../config/env.js";
+import { createOwnedSubscriptionService } from '../services/owned-subscription-service.js';
 
 export const createSubscription = async (req, res, next) => {
     try{
@@ -29,19 +30,19 @@ export const createSubscription = async (req, res, next) => {
 }
 
 
-export const getUserSubscriptions = async (req, res, next) => {
-    try{
-        //Check if user is the same as the one in the token
-        if(req.user.id !== req.params.id){
-            const error = new Error("You are not the owner of this account");
-            error.status = 401;
-            throw error;
-        }
+export const createGetUserSubscriptions = (
+    service = createOwnedSubscriptionService(),
+) => async (req, res, next) => {
+    try {
+        const subscriptions = await service.listOwnedSubscriptions(
+            req.providerIdentity,
+            req.params.id,
+        );
 
-        const subscriptions = await Subscription.find({user: req.params.id})
-
-        res.status(200).json({success: true, data: subscriptions});
-    } catch(error){
-        next(error);
+        return res.status(200).json({ success: true, data: subscriptions });
+    } catch (error) {
+        return next(error);
     }
-}
+};
+
+export const getUserSubscriptions = createGetUserSubscriptions();

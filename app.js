@@ -7,6 +7,7 @@ import userRouter from './routes/user.routes.js';
 import subscriptionRouter from './routes/subscription.routes.js';
 import authRouter from "./routes/auth.routes.js";
 import workflowRouter from "./routes/workflow.routes.js";
+import identityRouter from "./routes/identity.routes.js";
 import connectToDatabase from "./database/mongodb.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
@@ -21,6 +22,7 @@ app.use(cookieParser())
 
 
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/identity', identityRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/subscriptions', subscriptionRouter);
 app.use('/api/v1/workflows', workflowRouter)
