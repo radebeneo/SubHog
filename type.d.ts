@@ -25,7 +25,7 @@ declare global {
     currency?: string;
     frequency?: "Monthly" | "Yearly";
     billing: string;
-    renewalDate?: string;
+    renewalDate?: string | null;
     color?: string;
   }
 

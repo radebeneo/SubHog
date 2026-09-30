@@ -81,12 +81,41 @@ test("validates identity, provisioning, and complete subscription list DTOs", as
     await provision.client.provisionIdentity(),
     provisionedIdentityFixture,
   );
+  assert.equal(provision.requests[0].init.body, "{}");
+  assert.equal(
+    (provision.requests[0].init.headers as Record<string, string>)[
+      "Content-Type"
+    ],
+    "application/json",
+  );
 
   const list = createClient([successFixture([subscriptionFixture])]);
   assert.deepEqual(
     await list.client.listSubscriptions(subscriptionFixture.user),
     [subscriptionFixture],
   );
+});
+
+test("preserves daily and weekly frequencies, nullable renewal dates, and server order", async () => {
+  const first = {
+    ...subscriptionFixture,
+    _id: "newer",
+    frequency: "daily" as const,
+    renewalDate: null,
+    paymentMethod: "bank debit",
+  };
+  const second = {
+    ...subscriptionFixture,
+    _id: "older",
+    frequency: "weekly" as const,
+    currency: "GBP" as const,
+  };
+  const { client } = createClient([successFixture([first, second])]);
+
+  assert.deepEqual(await client.listSubscriptions(subscriptionFixture.user), [
+    first,
+    second,
+  ]);
 });
 
 test("rejects malformed JSON, unexpected envelopes, unknown enums, and no empty-list fallback", async () => {
@@ -169,11 +198,13 @@ test("bounds repeated 401 recovery to one replay", async () => {
 
 test("classifies backend errors without treating them as logout", async () => {
   const cases: Array<[number, string, string]> = [
+    [500, "IDENTITY_RESOLUTION_FAILED", "server"],
     [403, "IDENTITY_NOT_PROVISIONED", "authorization"],
     [409, "IDENTITY_CONFLICT", "conflict"],
     [422, "PROFILE_INCOMPLETE", "validation"],
     [500, "PROVISIONING_FAILED", "server"],
     [503, "AUTH_PROVIDER_UNAVAILABLE", "provider"],
+    [500, "SUBSCRIPTIONS_READ_FAILED", "server"],
   ];
   for (const [status, code, kind] of cases) {
     const { client } = createClient([errorFixture(status, code)]);

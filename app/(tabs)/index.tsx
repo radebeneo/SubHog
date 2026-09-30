@@ -1,19 +1,16 @@
-import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
+import SubscriptionStateView from "@/components/SubscriptionStateView";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
-import { HOME_BALANCE, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
-import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import { useSubscriptions } from "@/context/SubscriptionContext";
 import "@/global.css";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
-import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
 import { useState } from "react";
-import { FlatList, Image, Pressable, Text, View } from "react-native";
+import { FlatList, Image, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -22,11 +19,26 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const { subscriptions, addSubscription } = useSubscriptions();
-  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const { state, subscriptions } = useSubscriptions();
   const { user } = useUser();
   const displayName =
     user?.firstName || user?.emailAddresses[0]?.emailAddress || "Subscriber";
+
+  if (state.status !== "ready") {
+    return <SubscriptionStateView />;
+  }
+
+  const activeSubscriptions = subscriptions.filter(
+    (subscription) => subscription.status === "active",
+  );
+  const upcomingSubscriptions = activeSubscriptions
+    .filter((subscription) => subscription.renewalDate)
+    .map((subscription) => ({
+      ...subscription,
+      daysLeft: Math.max(0, dayjs(subscription.renewalDate).diff(dayjs(), "day")),
+    }))
+    .sort((first, second) => first.daysLeft - second.daysLeft)
+    .slice(0, 4);
 
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
@@ -37,44 +49,34 @@ export default function App() {
               <View className="home-user">
                 <Image
                   className="home-avatar"
-                  source={
-                    user?.imageUrl ? { uri: user.imageUrl } : images.avatar
-                  }
+                  source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
                 />
                 <Text className="home-user-name">{displayName}</Text>
               </View>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Add subscription"
-                onPress={() => setIsCreateModalVisible(true)}
-              >
-                <Image source={icons.add} className="home-add-icon" />
-              </Pressable>
+              <Text className="text-sm font-sans-semibold text-muted-foreground">
+                Read only
+              </Text>
             </View>
 
             <View className="home-balance-card">
-              <Text className="home-balance-label">Balance</Text>
-
+              <Text className="home-balance-label">Active subscriptions</Text>
               <View className="home-balance-row">
                 <Text className="home-balance-amount">
-                  {formatCurrency(HOME_BALANCE.amount)}
+                  {activeSubscriptions.length}
                 </Text>
-                <Text className="home-balance-date">
-                  {dayjs(HOME_BALANCE.nextRenewalDate).format("DD MMM")}
-                </Text>
+                <Text className="home-balance-date">API backed</Text>
               </View>
             </View>
 
             <View className="mb-5">
               <ListHeading title="Upcoming" />
               <FlatList
-                data={UPCOMING_SUBSCRIPTIONS}
+                data={upcomingSubscriptions}
                 horizontal
                 renderItem={({ item }) => (
                   <UpcomingSubscriptionCard {...item} />
                 )}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item) => item.id}
                 showsHorizontalScrollIndicator={false}
                 ListEmptyComponent={
                   <Text className="home-empty-state">
@@ -107,7 +109,7 @@ export default function App() {
             }}
           />
         )}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <Text className="home-empty-state">No subscriptions found.</Text>
@@ -115,11 +117,6 @@ export default function App() {
         extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}
         contentContainerClassName="pb-20"
-      />
-      <CreateSubscriptionModal
-        visible={isCreateModalVisible}
-        onClose={() => setIsCreateModalVisible(false)}
-        onCreate={addSubscription}
       />
     </SafeAreaView>
   );

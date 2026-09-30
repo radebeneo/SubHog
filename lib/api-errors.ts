@@ -37,6 +37,7 @@ export class ApiError extends Error {
 const backendErrorKinds: Record<ApiErrorCode, ApiErrorKind> = {
   AUTH_INVALID: "authentication",
   AUTH_PROVIDER_UNAVAILABLE: "provider",
+  IDENTITY_RESOLUTION_FAILED: "server",
   REQUEST_INVALID: "validation",
   LEGACY_EMAIL_CONFLICT: "conflict",
   IDENTITY_CONFLICT: "conflict",
@@ -48,6 +49,7 @@ const backendErrorKinds: Record<ApiErrorCode, ApiErrorKind> = {
   NOT_OWNER: "authorization",
   USER_NOT_FOUND: "validation",
   DATA_INTEGRITY_ERROR: "server",
+  SUBSCRIPTIONS_READ_FAILED: "server",
 };
 
 export function classifyBackendError(

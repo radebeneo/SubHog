@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Startup and Optional Analytics Stabilization — handling optional PostHog config, startup failure states, and typed analytics payloads
+- EXPO-03 Session-Aware Identity and Subscription Reads
 
 ## Current Goal
 
-- Validate startup reliability and analytics safety without breaking Clerk-required auth bootstrap
+- Maintain explicit Clerk session-scoped identity, provisioning, and owned-subscription read state
 
 ## Completed
 
@@ -26,7 +26,7 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- None
+- API-04 route migration and live Clerk/API configuration validation remain external gates
 
 ## Completed
 
@@ -36,25 +36,25 @@ Update this file after every meaningful implementation change.
 - Analytics payloads have been sanitized and typed to avoid invalid optional values and unsupported payload fields
 - `.env.example` documents the actual public PostHog env names alongside the required Clerk key
 - Focused PostHog config validation tests pass in Node without contacting external services
-- CONTRACT-01 revision 2.1 client DTO validation is aligned for the owned subscription list
+- CONTRACT-01 revision 2.2 is synchronized from the owner-approved API repository copy
 - API client recovery coordinates concurrent reads, rejects stale or cancelled responses, limits reads to one replay, never replays mutations, and redacts observed credentials
 - Reproducible API/test typechecking is available through `npm run typecheck:api`
+- EXPO-03 wires Clerk's ordinary session token into the API client after auth readiness
+- Subscription state distinguishes auth loading, signed out, identity resolution, unprovisioned, provisioning, list loading, ready, and operation-scoped failures
+- Sign-out, account changes, and same-user session replacement invalidate pending work and clear prior user-scoped identity, subscriptions, and errors
+- Provisioning is user-triggered, duplicate submissions are suppressed, and ambiguous transport failures recheck identity before any explicit resubmission
+- Production subscription screens use API-backed data with loading, empty, failure, retry, and provisioning UI; local create controls are removed from integrated mode
+- DTO display adaption preserves API IDs, currencies, lowercase enums, nullable renewal dates, payment methods, frequencies, and server ordering
+- Insights keep amounts separated by currency and billing frequency instead of producing mixed-currency totals
+- Isolated orchestration tests cover auth readiness, provisioning, stale work, contracted failures, DTO edge cases, fixture absence, and token-safe errors
+- EXPO-03 closeout coverage asserts immediate session-data removal, stale resolve/reject isolation, no stale follow-on requests, unchanged-auth idempotence, and preserved transport failure classification
+- INT-01B preparation strengthens sign-out coverage against stale follow-on list requests and requires the public API base URL to contain the canonical `/api/v1` path exactly once
 
 ## Next Up
 
-1. Create `types/subscription.ts` — Subscription and Category type definitions
-2. Create `types/auth.ts` — User and AuthState type definitions
-3. Create `context/SubscriptionContext.tsx` — Provider with add/delete/list + AsyncStorage persistence
-4. Create `context/AuthContext.tsx` — Provider with sign-in/sign-up/sign-out + local session persistence
-5. Update root `app/_layout.tsx` to wrap with both providers and handle auth-gating
-6. Build Home screen (`app/(tabs)/index.tsx`) — header, balance card, upcoming row, active list
-7. Build Add Subscription modal (`components/AddSubscriptionModal.tsx`)
-8. Build Sign In screen (`app/(auth)/sign-in.tsx`)
-9. Build Sign Up screen (`app/(auth)/sign-up.tsx`)
-10. Build Subscriptions tab (`app/(tabs)/subscriptions.tsx`) — full list view
-11. Build Subscription detail screen (`app/(tabs)/subscriptions/[id].tsx`)
-12. Build Insights tab (`app/(tabs)/insights.tsx`) — category breakdown
-13. Build Settings tab (`app/(tabs)/settings.tsx`) — profile and sign-out
+1. Complete API-04 migration of `GET /api/v1/subscriptions/user/:id`
+2. Verify the ordinary Clerk session-token claim policy and live public API base URL
+3. Run live end-to-end acceptance only after the backend and credential configuration gates are complete
 
 ## Open Questions
 
@@ -67,8 +67,9 @@ Update this file after every meaningful implementation change.
 ## Architecture Decisions
 
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
-- No external auth provider (Clerk, Firebase) in v1 — local session managed in `AuthContext`
-- No backend in v1 — all subscription data stored locally via AsyncStorage
+- Clerk is the active authentication authority; API requests use its ordinary active-session token
+- The remote API is authoritative for identity association and owned subscription reads
+- Subscription mutations remain disabled in integrated mode until separately contracted
 - Expo Router 6 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
 

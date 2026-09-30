@@ -8,15 +8,15 @@
 | Language   | TypeScript 5.9 (strict)              | Type-safe application code throughout                                |
 | Routing    | Expo Router 6 (file-based)           | Navigation — tabs, stack, dynamic routes                             |
 | Styling    | NativeWind 5 (Tailwind CSS v4)       | Utility-first styling with design token system in `global.css`       |
-| State      | React Context + useState (local)     | In-memory subscription and auth state; no external state manager     |
-| Storage    | AsyncStorage (v1)                    | Persisting subscriptions and session locally on device               |
-| Auth       | Local email/password (v1)            | Custom auth state stored in Context; no Clerk/Firebase in v1         |
+| State      | React Context + external-store controller | Session-scoped subscription read state; no external state manager |
+| Storage    | API + Clerk secure token cache       | Remote subscriptions and persisted Clerk session                     |
+| Auth       | Clerk Expo                           | Email/password UI backed by the active Clerk session                  |
 | Icons      | @expo/vector-icons (Ionicons)        | Tab bar and UI icons                                                 |
 | Navigation | @react-navigation/bottom-tabs        | Tab navigator rendered by Expo Router                                |
 
 ## System Boundaries
 
-- `app/(tabs)/` — Tab screens: index (home), subscriptions, insights, settings. Each file owns its own screen layout and data fetching from context.
+- `app/(tabs)/` — Tab screens consume API-backed subscription state from `SubscriptionContext`; Settings remains available during API failures.
 - `app/(tabs)/subscriptions/` — Nested stack for subscription detail screen (`[id].tsx`).
 - `app/(auth)/` — Auth screens: sign-in, sign-up. Rendered inside a Stack navigator, no tab bar.
 - `app/onboarding.tsx` — Standalone onboarding screen shown before auth.
@@ -27,23 +27,23 @@
 
 ## Storage Model
 
-- **AsyncStorage (local device)**: Active subscriptions list (id, name, icon, price, billingCycle, category, nextRenewal). User session (display name, email, isLoggedIn flag).
-- **React Context (in-memory)**: Runtime subscription state and auth state. Seeded from AsyncStorage on app load. Source of truth for all UI rendering.
-- **No remote database or file storage in v1**: All data is local-only.
+- **Remote API**: Owns API identity associations and subscription records.
+- **Clerk secure token cache**: Persists the active authentication session; bearer credentials are not copied into application state or storage.
+- **React Context (in-memory)**: Exposes session-scoped identity, provisioning, subscription-read state, and DTO display adapters.
 
 ## Auth and Access Model
 
-- Every user creates an account with email + password stored locally (AsyncStorage).
-- On app launch, the root layout checks whether a session exists. If not, it navigates to `onboarding` or `(auth)/sign-in`.
-- Auth state is held in a `AuthContext` provider that wraps the entire app.
-- No mutation (add/delete subscription) can be performed without an active local session.
-- No multi-user or sharing model — all data is private to the device user.
+- Clerk is the authentication authority and exposes the active user and session IDs.
+- Authenticated API reads start only after Clerk is loaded with an active session.
+- `GET /identity` resolves the API user; the Clerk subject is never used as the subscription owner ID.
+- Provisioning is an explicit user action through `POST /identity/provision`.
+- Subscription create, update, and delete remain outside the integrated client slice.
 
 ## Invariants
 
 1. **No hardcoded hex values in component files.** All colors must use NativeWind classes that map to tokens defined in `global.css` (`@theme`). Components must never inline `style={{ color: '#ea7a53' }}` or similar.
 2. **Global CSS component classes must be used for repeated UI patterns.** The `@layer components` block in `global.css` defines semantic class names (e.g. `sub-card`, `auth-button`). Components must use these classes, not one-off Tailwind utility chains.
 3. **Expo Router file-based routing must not be bypassed.** Navigation must use `<Link>`, `router.push()`, or `router.replace()` from `expo-router` — never React Navigation's `navigate()` directly.
-4. **Context is the only source of truth for subscription data at runtime.** Components must not maintain their own local copies of subscription lists. All reads and writes go through the subscription context.
-5. **No network calls in v1.** No `fetch()`, Axios, or SDK calls to external APIs. All data is local.
+4. **Context is the only source of truth for subscription data at runtime.** Components must not maintain their own local copies of subscription lists.
+5. **Authenticated work is session-generation scoped.** Sign-out, account changes, and same-user session replacement invalidate pending work and clear user-scoped state.
 6. **TypeScript strict mode is enforced.** No `any` types, no `// @ts-ignore`, no implicit `any` in function signatures.

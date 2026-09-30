@@ -48,8 +48,6 @@ function RootLayoutContent() {
   const pathname = usePathname();
   const previousPathname = useRef<string | null>(null);
 
-  useScreenTracking();
-
   useEffect(() => {
     void SplashScreen.preventAutoHideAsync().catch((error) => {
       console.warn(
@@ -138,21 +136,4 @@ function RootLayoutContent() {
       {navigation}
     </PostHogProvider>
   );
-}
-
-// Expo Router runs on React Navigation v7, which PostHog autocapture cannot track,
-// so send a $screen event on each route change.
-function useScreenTracking() {
-  const posthog = usePostHog();
-  const pathname = usePathname();
-  const previousPathname = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (previousPathname.current !== pathname) {
-      posthog.screen(pathname, {
-        previous_screen: previousPathname.current ?? null,
-      });
-      previousPathname.current = pathname;
-    }
-  }, [posthog, pathname]);
 }

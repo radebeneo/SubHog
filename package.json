@@ -11,7 +11,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
-    "test:api": "node --experimental-strip-types --test lib/api-client.test.ts lib/posthog-config.test.ts"
+    "test:api": "node --experimental-strip-types --test lib/api-client.test.ts lib/api-config.test.ts lib/posthog-config.test.ts lib/subscription-controller.test.ts"
   },
   "dependencies": {
     "@clerk/expo": "^4.6.6",

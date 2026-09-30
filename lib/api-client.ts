@@ -204,7 +204,7 @@ export class ApiClient {
   provisionIdentity(options?: RequestOptions): Promise<ProvisionedIdentityDto> {
     return this.request<ProvisionedIdentityDto>(
       "/identity/provision",
-      { ...options, method: "POST" },
+      { ...options, method: "POST", body: {} },
       isProvisionedIdentity,
     );
   }
@@ -222,7 +222,11 @@ export class ApiClient {
 
   private async request<T>(
     path: string,
-    options: RequestOptions & { method?: string; read?: boolean },
+    options: RequestOptions & {
+      method?: string;
+      read?: boolean;
+      body?: Record<string, never>;
+    },
     isData: (data: unknown) => data is T,
   ): Promise<T> {
     this.assertCanRetry(options);
@@ -294,7 +298,10 @@ export class ApiClient {
   private async send(
     path: string,
     token: string,
-    options: RequestOptions & { method?: string },
+    options: RequestOptions & {
+      method?: string;
+      body?: Record<string, never>;
+    },
   ): Promise<{ response?: Response; error?: ApiError }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -306,7 +313,9 @@ export class ApiClient {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
         },
+        body: options.body ? JSON.stringify(options.body) : undefined,
         signal: controller.signal,
       });
       if (!response.ok) {
