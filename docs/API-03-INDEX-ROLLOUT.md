@@ -45,3 +45,29 @@ section 9 of `CONTRACT-01.md` are confirmed.
 The application does not delete, rewrite, link, or repair existing users during
 index rollout. Any invalid or duplicate association requires a separately
 approved, backed-up operator migration.
+
+## Provisioning availability gate
+
+The provisioning route is not registered unless all of these conditions hold:
+
+- `IDENTITY_PROVISIONING_ENABLED` is exactly `true`.
+- `DB_RESOURCE_ID` identifies the database resource used by the application.
+- `IDENTITY_PROVISIONING_RESOURCE_ID` exactly matches `DB_RESOURCE_ID`.
+- `IDENTITY_PROVISIONING_RESOURCE_CONFIRMATION` is exactly
+  `ENABLE_PROVISIONING:<IDENTITY_PROVISIONING_RESOURCE_ID>`.
+
+Identity resolution remains available when provisioning is disabled. A missing,
+partial, or mismatched enabled configuration fails closed during route creation.
+
+## Acceptance environment
+
+The MongoDB acceptance harness reads only `INTEGRATION_MONGODB_URI`; it never
+falls back to `DB_URI`. It additionally requires an explicit resource ID,
+database name, run ID, resource-bound disposable confirmation, and run-scoped
+cleanup confirmation. Live API acceptance separately requires two dedicated
+Clerk session tokens and run-scoped subscription seed approval.
+
+The harness creates missing required indexes explicitly and inspects their
+definitions. It does not call `syncIndexes()`, drop indexes or collections, or
+repair data. Cleanup is limited to document IDs created and recorded by that
+acceptance run.

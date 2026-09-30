@@ -81,6 +81,7 @@ const startIdentityServer = async ({ service, verify = async () => identity }) =
         createIdentityRouter({
             authorize: createClerkAuthorize(verify),
             controller: createIdentityController(service),
+            provisioningEnabled: true,
         }),
     );
     app.use(errorMiddleware);

@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test:isolated": "node --test tests/*.unit.test.js",
+    "test:integration:mongodb": "node --test tests/mongodb-acceptance.integration.test.js",
+    "test:integration:clerk-api": "node tests/live-api-acceptance.js"
   },
   "dependencies": {
     "@arcjet/inspect": "^1.0.0-beta.15",
