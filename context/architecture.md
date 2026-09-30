@@ -4,9 +4,9 @@
 
 | Layer      | Technology                           | Role                                                                 |
 | ---------- | ------------------------------------ | -------------------------------------------------------------------- |
-| Framework  | Expo SDK 54 + React Native 0.81      | Cross-platform mobile runtime (iOS, Android, Web)                    |
-| Language   | TypeScript 5.9 (strict)              | Type-safe application code throughout                                |
-| Routing    | Expo Router 6 (file-based)           | Navigation — tabs, stack, dynamic routes                             |
+| Framework  | Expo SDK 57 + React Native 0.86      | Cross-platform mobile runtime (iOS, Android, Web)                    |
+| Language   | TypeScript 6.0 (strict)              | Type-safe application code throughout                                |
+| Routing    | Expo Router 57 (file-based)          | Navigation — tabs, stack, dynamic routes                             |
 | Styling    | NativeWind 5 (Tailwind CSS v4)       | Utility-first styling with design token system in `global.css`       |
 | State      | React Context + external-store controller | Session-scoped subscription read state; no external state manager |
 | Storage    | API + Clerk secure token cache       | Remote subscriptions and persisted Clerk session                     |

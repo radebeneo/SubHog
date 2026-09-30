@@ -44,9 +44,9 @@ Do not modify the following unless explicitly instructed:
 
 ## Expo Version Requirement
 
-**Always check `https://docs.expo.dev/versions/v54.0.0/` before writing any Expo-specific code.**
-Expo SDK 54 has breaking changes from earlier versions. Do not rely on memory of older APIs.
-Key areas to verify: `expo-router` v6 APIs, `SafeAreaView` from `react-native-safe-area-context`,
+**Always check `https://docs.expo.dev/versions/v57.0.0/` before writing any Expo-specific code.**
+Expo SDK 57 has breaking changes from earlier versions. Do not rely on memory of older APIs.
+Key areas to verify: `expo-router` 57 APIs, `SafeAreaView` from `react-native-safe-area-context`,
 `useLocalSearchParams` types, and `expo-haptics` usage.
 
 ## Keeping Docs in Sync

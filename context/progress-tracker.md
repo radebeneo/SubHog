@@ -12,7 +12,7 @@ Update this file after every meaningful implementation change.
 
 ## Completed
 
-- Expo project initialized (Expo SDK 54, React Native 0.81, Expo Router 6)
+- Expo project initialized (Expo SDK 57, React Native 0.86, Expo Router 57)
 - NativeWind 5 configured with Tailwind CSS v4 (`global.css`)
 - Design token system defined in `global.css` (`@theme` + `@layer components`)
 - Root layout (`app/_layout.tsx`) — Stack navigator with `headerShown: false`
@@ -70,7 +70,7 @@ Update this file after every meaningful implementation change.
 - Clerk is the active authentication authority; API requests use its ordinary active-session token
 - The remote API is authoritative for identity association and owned subscription reads
 - Subscription mutations remain disabled in integrated mode until separately contracted
-- Expo Router 6 file-based routing — no manual navigator setup in component code
+- Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
 
 ## Session Notes
