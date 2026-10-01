@@ -12,13 +12,15 @@ Update this file after every meaningful implementation change.
 
 ## Completed
 
+- Repository migration established npm workspaces and shared contracts, API client, and domain packages; mobile routes and source moved into the authenticated route group and `src/`; API runtime moved under `src/`.
+- Pre-migration source commits are retained by `pre-migration/mobile` and `pre-migration/api`; original app lockfiles and resolved dependency snapshots remain unchanged.
 - Expo project initialized (Expo SDK 57, React Native 0.86, Expo Router 57)
 - NativeWind 5 configured with Tailwind CSS v4 (`global.css`)
 - Design token system defined in `global.css` (`@theme` + `@layer components`)
 - Root layout (`app/_layout.tsx`) — Stack navigator with `headerShown: false`
 - Expo Router tab structure scaffolded: Home, Subscriptions, Insights, Settings
 - Auth route group scaffolded: Sign In, Sign Up (`app/(auth)/`)
-- Dynamic subscription detail route scaffolded: `app/(tabs)/subscriptions/[id].tsx`
+- Dynamic subscription detail route scaffolded: `app/(app)/subscriptions/[id].tsx`
 - Onboarding screen scaffolded: `app/onboarding.tsx`
 - Onboarding splash screen implemented with the supplied pattern artwork, responsive full-screen layout, and Get Started navigation to Sign Up
 - Root index route added to open onboarding on app launch
@@ -77,6 +79,6 @@ Update this file after every meaningful implementation change.
 
 - The project name is **SubHog** (`app.json` slug: `SubHog`)
 - The color theme is warm: cream background (`#fff9e3`), deep navy text (`#081126`), burnt-orange accent (`#ea7a53`)
-- `global.css` is imported in `app/(tabs)/index.tsx` — confirm it is also imported in `app/_layout.tsx` (it currently is)
+- `global.css` is imported in `app/(app)/(tabs)/index.tsx` and `app/_layout.tsx`
 - All screen files in `app/(tabs)/` are currently placeholder stubs — they need full implementation
 - Expo is running in dev mode (`npx expo start`) — test changes with Expo Go on device

@@ -6,18 +6,13 @@
   },
   "include": [],
   "files": [
-    "lib/api-client.ts",
-    "lib/api-client.test.ts",
-    "lib/api-config.ts",
-    "lib/api-config.test.ts",
-    "lib/api-errors.ts",
-    "lib/api-fixtures.test.ts",
-    "lib/api-types.ts",
-    "lib/clerk-token.ts",
-    "lib/posthog-config.ts",
-    "lib/posthog-config.test.ts",
-    "lib/subscription-controller.ts",
-    "lib/subscription-controller.test.ts",
-    "lib/test-globals.d.ts"
+    "../../packages/api-client/tests/api-client.test.ts",
+    "tests/api-config.test.ts",
+    "src/config/api-config.ts",
+    "src/adapters/posthog-config.ts",
+    "src/adapters/posthog-config.test.ts",
+    "src/features/subscriptions/subscription-controller.ts",
+    "src/features/subscriptions/subscription-controller.test.ts",
+    "src/types/test-globals.d.ts"
   ]
 }

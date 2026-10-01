@@ -2,18 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import express from 'express';
 
-import { createGetUserSubscriptions } from '../controllers/subscription.controller.js';
-import { createClerkAuthorize } from '../middlewares/clerk-auth.middleware.js';
-import errorMiddleware from '../middlewares/error.middleware.js';
-import Subscription from '../models/subscription.model.js';
-import User from '../models/user.model.js';
-import { createSubscriptionRouter } from '../routes/subscription.routes.js';
-import { IdentityApiError } from '../services/clerk-profile.js';
+import { createGetUserSubscriptions } from '../src/controllers/subscription.controller.js';
+import { createClerkAuthorize } from '../src/middlewares/clerk-auth.middleware.js';
+import errorMiddleware from '../src/middlewares/error.middleware.js';
+import Subscription from '../src/models/subscription.model.js';
+import User from '../src/models/user.model.js';
+import { createSubscriptionRouter } from '../src/routes/subscription.routes.js';
+import { IdentityApiError } from '../src/services/clerk-profile.js';
 import {
     createOwnedSubscriptionService,
     OWNED_SUBSCRIPTION_FIELDS,
     serializeOwnedSubscription,
-} from '../services/owned-subscription-service.js';
+} from '../src/services/owned-subscription-service.js';
 
 const ownerId = '665f00000000000000000001';
 const otherId = '665f00000000000000000002';

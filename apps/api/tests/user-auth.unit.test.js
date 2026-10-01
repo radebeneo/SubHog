@@ -4,12 +4,12 @@ import test from 'node:test';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 
-import User, { serializeUser } from '../models/user.model.js';
-import authorize from '../middlewares/auth.middleware.js';
-import { signUp, signIn } from '../controllers/auth.controller.js';
-import { getUserById } from '../controllers/user.controller.js';
-import userRouter from '../routes/user.routes.js';
-import { JWT_SECRET } from '../config/env.js';
+import User, { serializeUser } from '../src/models/user.model.js';
+import authorize from '../src/middlewares/auth.middleware.js';
+import { signUp, signIn } from '../src/controllers/auth.controller.js';
+import { getUserById } from '../src/controllers/user.controller.js';
+import userRouter from '../src/routes/user.routes.js';
+import { JWT_SECRET } from '../src/config/env.js';
 
 const makeRes = () => {
   const res = {

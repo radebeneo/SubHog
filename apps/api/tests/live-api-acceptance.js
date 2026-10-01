@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import mongoose from 'mongoose';
 
-import { createClerkVerifierConfig } from '../config/clerk.js';
-import { createLiveAcceptanceConfig } from '../config/integration-acceptance.js';
-import { createProvisioningConfig } from '../config/provisioning.js';
-import errorMiddleware from '../middlewares/error.middleware.js';
-import clerkAuthorize from '../middlewares/clerk-auth.middleware.js';
-import Subscription from '../models/subscription.model.js';
-import User from '../models/user.model.js';
-import { createIdentityRouter } from '../routes/identity.routes.js';
-import { createSubscriptionRouter } from '../routes/subscription.routes.js';
-import { createClerkVerifier } from '../services/clerk-verifier.js';
+import { createClerkVerifierConfig } from '../src/config/clerk.js';
+import { createLiveAcceptanceConfig } from '../src/config/integration-acceptance.js';
+import { createProvisioningConfig } from '../src/config/provisioning.js';
+import errorMiddleware from '../src/middlewares/error.middleware.js';
+import clerkAuthorize from '../src/middlewares/clerk-auth.middleware.js';
+import Subscription from '../src/models/subscription.model.js';
+import User from '../src/models/user.model.js';
+import { createIdentityRouter } from '../src/routes/identity.routes.js';
+import { createSubscriptionRouter } from '../src/routes/subscription.routes.js';
+import { createClerkVerifier } from '../src/services/clerk-verifier.js';
 
 const config = createLiveAcceptanceConfig();
 const provisioning = createProvisioningConfig();

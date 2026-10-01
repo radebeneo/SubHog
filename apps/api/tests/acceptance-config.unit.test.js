@@ -5,9 +5,9 @@ import express from 'express';
 import {
     createLiveAcceptanceConfig,
     createMongoAcceptanceConfig,
-} from '../config/integration-acceptance.js';
-import { createProvisioningConfig } from '../config/provisioning.js';
-import { createIdentityRouter } from '../routes/identity.routes.js';
+} from '../src/config/integration-acceptance.js';
+import { createProvisioningConfig } from '../src/config/provisioning.js';
+import { createIdentityRouter } from '../src/routes/identity.routes.js';
 
 const mongoSource = {
     INTEGRATION_MONGODB_URI: 'mongodb://localhost:27017/int01a_acceptance?replicaSet=rs0',

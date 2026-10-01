@@ -1,5 +1,5 @@
-import images from "@/constants/images";
-import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
+import images from "@/config/images";
+import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -67,14 +67,14 @@ const SignIn = () => {
             return;
           }
 
-          const url = decorateUrl("/(tabs)");
+          const url = decorateUrl("/(app)/(tabs)");
           if (url.startsWith("http")) {
             // Only use window.location on web platform
             if (typeof window !== "undefined" && window.location) {
               window.location.href = url;
             } else {
               // On native, just use router navigation
-              router.replace("/(tabs)" as Href);
+              router.replace("/(app)/(tabs)" as Href);
             }
           } else {
             router.replace(url as Href);
@@ -116,14 +116,14 @@ const SignIn = () => {
             return;
           }
 
-          const url = decorateUrl("/(tabs)");
+          const url = decorateUrl("/(app)/(tabs)");
           if (url.startsWith("http")) {
             // Only use window.location on web platform
             if (typeof window !== "undefined" && window.location) {
               window.location.href = url;
             } else {
               // On native, just use router navigation
-              router.replace("/(tabs)" as Href);
+              router.replace("/(app)/(tabs)" as Href);
             }
           } else {
             router.replace(url as Href);

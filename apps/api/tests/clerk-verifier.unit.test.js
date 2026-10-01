@@ -10,8 +10,8 @@ import {
 
 const { JWKSNoMatchingKey, JWKSTimeout } = errors;
 
-import { createClerkVerifierConfig } from '../config/clerk.js';
-import { createClerkVerifier, ClerkAuthError } from '../services/clerk-verifier.js';
+import { createClerkVerifierConfig } from '../src/config/clerk.js';
+import { createClerkVerifier, ClerkAuthError } from '../src/services/clerk-verifier.js';
 
 const issuer = 'https://issuer.example.test';
 const audience = 'subscription-tracker-test';

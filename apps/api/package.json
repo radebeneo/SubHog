@@ -4,33 +4,35 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "test:isolated": "node --test tests/*.unit.test.js",
     "test:integration:mongodb": "node --test tests/mongodb-acceptance.integration.test.js",
     "test:integration:clerk-api": "node tests/live-api-acceptance.js"
   },
   "dependencies": {
-    "@arcjet/inspect": "^1.0.0-beta.15",
-    "@arcjet/node": "^1.0.0-beta.15",
+    "@subhog/contracts": "*",
+    "@subhog/domain": "*",
+    "@arcjet/inspect": "1.0.0-beta.15",
+    "@arcjet/node": "1.0.0-beta.15",
     "@upstash/workflow": "^0.2.23",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "~1.4.4",
-    "dayjs": "^1.11.19",
+    "dayjs": "1.11.19",
     "debug": "~2.6.9",
-    "dotenv": "^17.2.3",
+    "dotenv": "17.2.3",
     "express": "~4.16.1",
     "jose": "5.10.0",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.0.0",
-    "mongoose": "^9.0.0",
+    "mongodb": "7.0.0",
+    "mongoose": "9.0.0",
     "morgan": "~1.9.1",
-    "nodemailer": "^8.0.0"
+    "nodemailer": "8.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "eslint": "^9.39.1",
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
     "globals": "^16.5.0",
-    "nodemon": "^3.1.11"
+    "nodemon": "3.1.11"
   }
 }

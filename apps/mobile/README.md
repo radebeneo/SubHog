@@ -4,16 +4,16 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
-1. Install dependencies
+1. From the repository root, install the workspace dependencies
 
    ```bash
-   npm install
+   npm ci
    ```
 
 2. Start the app
 
    ```bash
-   npx expo start
+   npm run start --workspace=subhog
    ```
 
 In the output, you'll find options to open the app in a
@@ -23,7 +23,7 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Routes live in **app/** and application code lives in **src/**. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ## Get a fresh project
 

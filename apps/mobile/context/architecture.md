@@ -16,20 +16,29 @@
 
 ## System Boundaries
 
-- `app/(tabs)/` — Tab screens consume API-backed subscription state from `SubscriptionContext`; Settings remains available during API failures.
-- `app/(tabs)/subscriptions/` — Nested stack for subscription detail screen (`[id].tsx`).
+- `app/(app)/(tabs)/` — Authenticated tab screens consume API-backed subscription state from `SubscriptionProvider`; Settings remains available during API failures.
+- `app/(app)/subscriptions/[id].tsx` — Authenticated subscription detail route, outside the tab navigator.
 - `app/(auth)/` — Auth screens: sign-in, sign-up. Rendered inside a Stack navigator, no tab bar.
 - `app/onboarding.tsx` — Standalone onboarding screen shown before auth.
-- `app/_layout.tsx` — Root Stack layout. Controls which route group is active (auth vs tabs).
-- `context/` — AI context documentation only. NOT a source code folder.
+- `app/_layout.tsx` — Root Stack layout; `(app)/_layout.tsx` owns the authenticated app stack.
+- `src/components/`, `src/features/`, `src/providers/`, `src/adapters/`, and `src/config/` — Mobile application code by responsibility.
+- `context/` — AI context documentation only. Provider source lives in `src/providers/`.
 - `global.css` — Design token definitions (colors, spacing, font families). All Tailwind/NativeWind classes are defined here under `@theme` and `@layer components`.
 - `assets/` — Images, icons, and splash screen assets. Read-only during normal development.
+
+## Shared Packages
+
+- `packages/contracts` owns request/response guards, DTOs, currencies, categories, frequencies, statuses, and API error codes.
+- `packages/api-client` owns platform-neutral HTTP behavior. It receives token retrieval as a callback and must not import React Native or Clerk.
+- `packages/domain` owns platform-independent subscription calculations and calendar recurrence.
+
+Dependency direction is Mobile → API client → Contracts, Mobile → Domain, API → Contracts, and API → Domain. The mobile app must never import API implementation code; calls to the API always cross the network boundary.
 
 ## Storage Model
 
 - **Remote API**: Owns API identity associations and subscription records.
 - **Clerk secure token cache**: Persists the active authentication session; bearer credentials are not copied into application state or storage.
-- **React Context (in-memory)**: Exposes session-scoped identity, provisioning, subscription-read state, and DTO display adapters.
+- **React Context (in-memory)**: `src/providers/SubscriptionContext.tsx` exposes session-scoped identity, provisioning, subscription-read state, and DTO display adapters.
 
 ## Auth and Access Model
 

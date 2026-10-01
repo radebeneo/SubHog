@@ -28,14 +28,18 @@ The **Subscription Tracker API** is a comprehensive solution for users to manage
 ## 📁 Project Structure
 
 ```bash
-├── config              # Environment and third-party service configurations
-├── controllers         # Request handlers and business logic
-├── database            # Database connection setup
-├── middlewares         # Authentication, security, and error handlers
-├── models              # Mongoose data models
-├── routes              # API endpoint definitions
-├── utils               # Helper functions (e.g., email sending)
-└── app.js              # Express application entry point
+├── src/
+│   ├── config/         # Environment and third-party service configurations
+│   ├── controllers/    # Request handlers
+│   ├── database/       # Database connection setup
+│   ├── middlewares/    # Authentication, security, and error handlers
+│   ├── models/         # Mongoose data models
+│   ├── routes/         # API endpoint definitions
+│   ├── services/       # API services
+│   ├── utils/          # Helper functions (e.g., email sending)
+│   ├── app.js          # Express application configuration
+│   └── server.js       # HTTP listener and database startup
+└── tests/              # Isolated and integration tests
 ```
 
 ## ⚙️ Getting Started
@@ -49,15 +53,11 @@ The **Subscription Tracker API** is a comprehensive solution for users to manage
 
 ### Installation
 
-1.  Clone the repository:
+1.  Clone the repository and install from the monorepo root:
     ```bash
     git clone <repository-url>
-    cd subscription-tracker
-    ```
-
-2.  Install dependencies:
-    ```bash
-    npm install
+    cd SubHog
+    npm ci
     ```
 
 3.  Set up environment variables:
@@ -80,11 +80,11 @@ The **Subscription Tracker API** is a comprehensive solution for users to manage
 
 -   Development mode:
     ```bash
-    npm run dev
+    npm run dev --workspace=subscription-tracker
     ```
 -   Production mode:
     ```bash
-    npm start
+    npm start --workspace=subscription-tracker
     ```
 
 ## 🔌 API Endpoints

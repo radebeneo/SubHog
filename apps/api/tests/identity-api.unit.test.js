@@ -5,18 +5,18 @@ import express from 'express';
 import {
     createClerkProfileConfig,
     MAX_CLERK_PROFILE_TIMEOUT_MS,
-} from '../config/clerk-profile.js';
-import { createIdentityController } from '../controllers/identity.controller.js';
-import errorMiddleware from '../middlewares/error.middleware.js';
-import { createClerkAuthorize } from '../middlewares/clerk-auth.middleware.js';
-import User, { serializeUser } from '../models/user.model.js';
-import { createIdentityRouter } from '../routes/identity.routes.js';
+} from '../src/config/clerk-profile.js';
+import { createIdentityController } from '../src/controllers/identity.controller.js';
+import errorMiddleware from '../src/middlewares/error.middleware.js';
+import { createClerkAuthorize } from '../src/middlewares/clerk-auth.middleware.js';
+import User, { serializeUser } from '../src/models/user.model.js';
+import { createIdentityRouter } from '../src/routes/identity.routes.js';
 import {
     createClerkProfileClient,
     IdentityApiError,
     MAX_CLERK_PROFILE_BODY_BYTES,
-} from '../services/clerk-profile.js';
-import { createIdentityService } from '../services/identity-service.js';
+} from '../src/services/clerk-profile.js';
+import { createIdentityService } from '../src/services/identity-service.js';
 
 const identity = { provider: 'clerk', subject: 'user_subject' };
 const storedUser = {

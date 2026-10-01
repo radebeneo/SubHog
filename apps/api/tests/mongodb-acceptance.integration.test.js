@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import mongoose from 'mongoose';
 
-import { createMongoAcceptanceConfig } from '../config/integration-acceptance.js';
-import Subscription from '../models/subscription.model.js';
-import User from '../models/user.model.js';
-import { createIdentityService } from '../services/identity-service.js';
-import { createOwnedSubscriptionService } from '../services/owned-subscription-service.js';
+import { createMongoAcceptanceConfig } from '../src/config/integration-acceptance.js';
+import Subscription from '../src/models/subscription.model.js';
+import User from '../src/models/user.model.js';
+import { createIdentityService } from '../src/services/identity-service.js';
+import { createOwnedSubscriptionService } from '../src/services/owned-subscription-service.js';
 
 const config = createMongoAcceptanceConfig();
 const tag = config.runId.toLowerCase();

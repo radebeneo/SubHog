@@ -12,7 +12,7 @@ export default function RootLayout() {
 
   // Redirect to home if user is already signed in
   if (isSignedIn) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(app)/(tabs)" />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;

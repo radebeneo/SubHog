@@ -11,9 +11,12 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
-    "test:api": "node --experimental-strip-types --test lib/api-client.test.ts lib/api-config.test.ts lib/posthog-config.test.ts lib/subscription-controller.test.ts"
+    "test:api": "node --experimental-strip-types --test ../../packages/api-client/tests/api-client.test.ts tests/api-config.test.ts src/adapters/posthog-config.test.ts src/features/subscriptions/subscription-controller.test.ts"
   },
   "dependencies": {
+    "@subhog/api-client": "*",
+    "@subhog/contracts": "*",
+    "@subhog/domain": "*",
     "@clerk/expo": "^4.6.6",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
@@ -62,7 +65,5 @@
     "typescript": "~6.0.3"
   },
   "private": true,
-  "overrides": {
-    "lightningcss": "1.30.1"
-  }
+  "overrides": {}
 }
