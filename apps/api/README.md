@@ -80,11 +80,11 @@ The **Subscription Tracker API** is a comprehensive solution for users to manage
 
 -   Development mode:
     ```bash
-    npm run dev --workspace=subscription-tracker
+    npm run dev --workspace=@subhog/api
     ```
 -   Production mode:
     ```bash
-    npm start --workspace=subscription-tracker
+    npm start --workspace=@subhog/api
     ```
 
 ## 🔌 API Endpoints

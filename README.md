@@ -27,13 +27,16 @@ The mobile app imports no API implementation code. Network access remains the bo
 Install from the repository root so npm uses the root workspace lockfile:
 
 ```sh
+nvm use
 npm ci
-npm run test:mobile
-npm run test:api
 npm run lint
 npm run typecheck
+npm test
+npm run build
 ```
 
-The API's legacy password-auth tests require `JWT_SECRET` and `JWT_EXPIRES_IN`. API startup additionally requires `DB_URI`; live acceptance tests require their explicitly documented credentials and seed approval.
+Node 24.11 and npm 11.6 are pinned by `.nvmrc`, `engines`, and `packageManager`. The root `package-lock.json` is the only lockfile; always install from the repository root.
 
-The original `apps/mobile/package-lock.json` and `apps/api/package-lock.json` remain preserved as source snapshots. `migration-baseline.md` records their pre-migration hashes and baseline checks.
+The default `npm test` command runs unit tests only. MongoDB and live Clerk/API acceptance remain opt-in through `npm run test:integration:mongodb` and `npm run test:integration:clerk-api`. The API's legacy password-auth unit tests require `JWT_SECRET` and `JWT_EXPIRES_IN`; API startup additionally requires `DB_URI`.
+
+Expo and EAS configuration lives in `apps/mobile`. Run EAS commands from that directory. Expo's default `expo/metro-config` workspace support is used without legacy resolver overrides, and the API client is compiled during the EAS post-install hook before bundling.

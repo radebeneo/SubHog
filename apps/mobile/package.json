@@ -1,17 +1,24 @@
 {
-  "name": "subhog",
+  "name": "@subhog/mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "prestart": "npm --prefix ../.. run build --workspace=@subhog/api-client",
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
+    "preandroid": "npm --prefix ../.. run build --workspace=@subhog/api-client",
     "android": "expo start --android",
+    "preios": "npm --prefix ../.. run build --workspace=@subhog/api-client",
     "ios": "expo start --ios",
+    "preweb": "npm --prefix ../.. run build --workspace=@subhog/api-client",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit",
-    "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
-    "test:api": "node --experimental-strip-types --test ../../packages/api-client/tests/api-client.test.ts tests/api-config.test.ts src/adapters/posthog-config.test.ts src/features/subscriptions/subscription-controller.test.ts"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
+    "pretest": "npm --prefix ../.. run build --workspace=@subhog/api-client",
+    "test": "node --experimental-strip-types --test tests/api-config.test.ts src/adapters/posthog-config.test.ts src/features/subscriptions/subscription-controller.test.ts",
+    "prebuild": "npm --prefix ../.. run build --workspace=@subhog/api-client",
+    "build": "expo export --platform web",
+    "eas-build-post-install": "npm --prefix ../.. run build --workspace=@subhog/api-client"
   },
   "dependencies": {
     "@subhog/api-client": "*",

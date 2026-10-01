@@ -11,5 +11,11 @@
       "import": "./index.js",
       "default": "./index.js"
     }
+  },
+  "scripts": {
+    "lint": "node --check index.js",
+    "typecheck": "node --check index.js",
+    "test": "node --test",
+    "build": "node --check index.js"
   }
 }

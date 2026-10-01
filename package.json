@@ -1,16 +1,23 @@
 {
-  "name": "subhog-monorepo",
+  "name": "subhog",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": "24.11.x",
+    "npm": "11.6.x"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "test:mobile": "npm run test:api --workspace=subhog",
-    "test:api": "npm run test:isolated --workspace=subscription-tracker",
-    "lint": "npm run lint --workspace=subhog",
-    "typecheck": "npm run typecheck --workspace=subhog"
+    "build": "npm run build --workspace=@subhog/api-client && npm run build --workspace=@subhog/contracts && npm run build --workspace=@subhog/domain && npm run build --workspace=@subhog/api && npm run build --workspace=@subhog/mobile",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration:mongodb": "npm run test:integration:mongodb --workspace=@subhog/api",
+    "test:integration:clerk-api": "npm run test:integration:clerk-api --workspace=@subhog/api"
   },
   "overrides": {
     "lightningcss": "1.30.1"

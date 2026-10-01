@@ -1,12 +1,15 @@
 {
-  "name": "subscription-tracker",
+  "name": "@subhog/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test:isolated": "node --test tests/*.unit.test.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import ./tests/setup-env.js --test tests/*.unit.test.js",
+    "build": "tsc --noEmit",
     "test:integration:mongodb": "node --test tests/mongodb-acceptance.integration.test.js",
     "test:integration:clerk-api": "node tests/live-api-acceptance.js"
   },
@@ -31,8 +34,10 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
+    "@types/node": "^22.0.0",
     "eslint": "9.39.1",
     "globals": "^16.5.0",
-    "nodemon": "3.1.11"
+    "nodemon": "3.1.11",
+    "typescript": "~6.0.3"
   }
 }

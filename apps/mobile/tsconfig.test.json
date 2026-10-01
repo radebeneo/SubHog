@@ -6,7 +6,6 @@
   },
   "include": [],
   "files": [
-    "../../packages/api-client/tests/api-client.test.ts",
     "tests/api-config.test.ts",
     "src/config/api-config.ts",
     "src/adapters/posthog-config.ts",

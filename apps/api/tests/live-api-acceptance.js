@@ -6,7 +6,6 @@ import { createClerkVerifierConfig } from '../src/config/clerk.js';
 import { createLiveAcceptanceConfig } from '../src/config/integration-acceptance.js';
 import { createProvisioningConfig } from '../src/config/provisioning.js';
 import errorMiddleware from '../src/middlewares/error.middleware.js';
-import clerkAuthorize from '../src/middlewares/clerk-auth.middleware.js';
 import Subscription from '../src/models/subscription.model.js';
 import User from '../src/models/user.model.js';
 import { createIdentityRouter } from '../src/routes/identity.routes.js';
