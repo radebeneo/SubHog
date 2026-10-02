@@ -10,6 +10,8 @@
     "src/config/api-config.ts",
     "src/adapters/posthog-config.ts",
     "src/adapters/posthog-config.test.ts",
+    "src/features/profile/profile-name.ts",
+    "src/features/profile/profile-name.test.ts",
     "src/features/subscriptions/subscription-controller.ts",
     "src/features/subscriptions/subscription-controller.test.ts",
     "src/types/test-globals.d.ts"

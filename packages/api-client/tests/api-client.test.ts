@@ -99,14 +99,14 @@ test("validates identity, provisioning, and complete subscription list DTOs", as
 test("preserves daily and weekly frequencies, nullable renewal dates, and server order", async () => {
   const first = {
     ...subscriptionFixture,
-    _id: "newer",
+    _id: "665f00000000000000000012",
     frequency: "daily" as const,
     renewalDate: null,
     paymentMethod: "bank debit",
   };
   const second = {
     ...subscriptionFixture,
-    _id: "older",
+    _id: "665f00000000000000000011",
     frequency: "weekly" as const,
     currency: "GBP" as const,
   };

@@ -10,12 +10,34 @@ import {
 
 const { JWKSNoMatchingKey, JWKSTimeout } = errors;
 
-import { createClerkVerifierConfig } from '../src/config/clerk.js';
+import {
+    createClerkVerifierConfig,
+    MAX_CLERK_CLOCK_SKEW_SECONDS,
+    MAX_CLERK_JWKS_CACHE_MAX_AGE_MS,
+    MAX_CLERK_JWKS_REFRESH_COOLDOWN_MS,
+    MAX_CLERK_JWKS_TIMEOUT_MS,
+} from '../src/config/clerk.js';
+import {
+    createClerkAuthorize,
+    initializeClerkVerifier,
+} from '../src/middlewares/clerk-auth.middleware.js';
 import { createClerkVerifier, ClerkAuthError } from '../src/services/clerk-verifier.js';
 
 const issuer = 'https://issuer.example.test';
 const audience = 'subscription-tracker-test';
 const authorizedParty = 'https://app.example.test';
+const configSource = {
+    CLERK_JWKS_URL: 'https://clerk.example.test/.well-known/jwks.json',
+    CLERK_ISSUER: issuer,
+    CLERK_AUDIENCE: audience,
+    CLERK_ALLOWED_ALGORITHMS: 'RS256',
+    CLERK_AUTHORIZED_PARTY_POLICY: 'required',
+    CLERK_AUTHORIZED_PARTIES: authorizedParty,
+    CLERK_CLOCK_SKEW_SECONDS: '5',
+    CLERK_JWKS_TIMEOUT_MS: '100',
+    CLERK_JWKS_REFRESH_COOLDOWN_MS: '1000',
+    CLERK_JWKS_CACHE_MAX_AGE_MS: '5000',
+};
 
 const config = {
     jwksUrl: new URL('https://jwks.example.test/.well-known/jwks.json'),
@@ -85,16 +107,7 @@ const publicJwk = async (publicKey, kid) => ({
 
 test('configuration requires explicit live policy inputs and keeps profile secrets separate', () => {
     const verified = createClerkVerifierConfig({
-        CLERK_JWKS_URL: 'https://clerk.example.test/.well-known/jwks.json',
-        CLERK_ISSUER: issuer,
-        CLERK_AUDIENCE: audience,
-        CLERK_ALLOWED_ALGORITHMS: 'RS256',
-        CLERK_AUTHORIZED_PARTY_POLICY: 'required',
-        CLERK_AUTHORIZED_PARTIES: authorizedParty,
-        CLERK_CLOCK_SKEW_SECONDS: '5',
-        CLERK_JWKS_TIMEOUT_MS: '100',
-        CLERK_JWKS_REFRESH_COOLDOWN_MS: '1000',
-        CLERK_JWKS_CACHE_MAX_AGE_MS: '5000',
+        ...configSource,
         CLERK_SECRET_KEY: 'must-not-be-read-by-verifier',
     });
 
@@ -102,6 +115,52 @@ test('configuration requires explicit live policy inputs and keeps profile secre
     assert.deepEqual(verified.authorizedParties, [authorizedParty]);
     assert.equal(verified.profileSecret, undefined);
     assert.throws(() => createClerkVerifierConfig({}), /CLERK_JWKS_URL/);
+});
+
+test('configuration rejects whitespace, unsafe JWKS URLs, empty list entries, and out-of-range numbers', () => {
+    for (const CLERK_JWKS_URL of [
+        'https://user:password@clerk.example.test/.well-known/jwks.json',
+        'https://clerk.example.test/.well-known/jwks.json#keys',
+    ]) {
+        assert.throws(
+            () => createClerkVerifierConfig({ ...configSource, CLERK_JWKS_URL }),
+            /credential-free HTTPS URL without a fragment/,
+        );
+    }
+
+    for (const overrides of [
+        { CLERK_ISSUER: '   ' },
+        { CLERK_ISSUER: ` ${issuer}` },
+        { CLERK_AUDIENCE: `${audience}, ` },
+        { CLERK_JWKS_TIMEOUT_MS: ' 100' },
+        { CLERK_JWKS_TIMEOUT_MS: '0' },
+        { CLERK_JWKS_TIMEOUT_MS: String(MAX_CLERK_JWKS_TIMEOUT_MS + 1) },
+        { CLERK_JWKS_REFRESH_COOLDOWN_MS: String(MAX_CLERK_JWKS_REFRESH_COOLDOWN_MS + 1) },
+        { CLERK_JWKS_CACHE_MAX_AGE_MS: String(MAX_CLERK_JWKS_CACHE_MAX_AGE_MS + 1) },
+        { CLERK_CLOCK_SKEW_SECONDS: String(MAX_CLERK_CLOCK_SKEW_SECONDS + 1) },
+    ]) {
+        assert.throws(() => createClerkVerifierConfig({ ...configSource, ...overrides }));
+    }
+});
+
+test('startup initialization validates eagerly without retrieving the remote JWKS', () => {
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = async () => {
+        fetchCalls += 1;
+        throw new Error('JWKS retrieval must stay lazy');
+    };
+
+    try {
+        assert.equal(typeof initializeClerkVerifier(configSource), 'function');
+        assert.equal(fetchCalls, 0);
+        assert.throws(
+            () => initializeClerkVerifier({ ...configSource, CLERK_ISSUER: ' ' }),
+            /CLERK_ISSUER/,
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
 });
 
 test('valid credential exposes only the Clerk provider identity', async () => {
@@ -120,6 +179,48 @@ test('missing, malformed, duplicate, and empty credentials are rejected', async 
     for (const header of [undefined, '', 'Token value', 'Bearer', 'Bearer one two', ['Bearer one', 'Bearer two']]) {
         await expectAuthError(verifier(header), 401, 'AUTH_INVALID');
     }
+});
+
+test('middleware uses distinct or raw Authorization headers and rejects duplicates', async () => {
+    const seen = [];
+    const authorize = createClerkAuthorize(async (authorization) => {
+        seen.push(authorization);
+        if (typeof authorization !== 'string') {
+            throw new ClerkAuthError(401, 'AUTH_INVALID', 'invalid');
+        }
+        return { provider: 'clerk', subject: 'user_test_subject' };
+    });
+    const nextErrors = [];
+    const next = (error) => nextErrors.push(error);
+
+    await authorize({
+        headers: { authorization: 'Bearer merged-value-must-not-be-used' },
+        headersDistinct: { authorization: ['Bearer first', 'Bearer second'] },
+        rawHeaders: ['Authorization', 'Bearer first', 'Authorization', 'Bearer second'],
+    }, {}, next);
+    await authorize({
+        headers: { authorization: 'Bearer merged-value-must-not-be-used' },
+        rawHeaders: ['Authorization', 'Bearer first', 'authorization', 'Bearer second'],
+    }, {}, next);
+    const acceptedRequest = {
+        headers: { authorization: 'Bearer merged-value-must-not-be-used' },
+        headersDistinct: { authorization: ['Bearer distinct-value'] },
+        rawHeaders: ['Authorization', 'Bearer raw-value'],
+    };
+    await authorize(acceptedRequest, {}, next);
+
+    assert.deepEqual(seen, [
+        ['Bearer first', 'Bearer second'],
+        ['Bearer first', 'Bearer second'],
+        'Bearer distinct-value',
+    ]);
+    assert.equal(nextErrors[0].code, 'AUTH_INVALID');
+    assert.equal(nextErrors[1].code, 'AUTH_INVALID');
+    assert.equal(nextErrors[2], undefined);
+    assert.deepEqual(acceptedRequest.providerIdentity, {
+        provider: 'clerk',
+        subject: 'user_test_subject',
+    });
 });
 
 test('invalid signature and wrong issuer are rejected without fallback', async () => {

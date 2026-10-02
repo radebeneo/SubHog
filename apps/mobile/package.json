@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "pretest": "npm --prefix ../.. run build --workspace=@subhog/api-client",
-    "test": "node --experimental-strip-types --test tests/api-config.test.ts src/adapters/posthog-config.test.ts src/features/subscriptions/subscription-controller.test.ts",
+    "test": "node --experimental-strip-types --test tests/api-config.test.ts src/adapters/posthog-config.test.ts src/features/profile/profile-name.test.ts src/features/subscriptions/subscription-controller.test.ts",
     "prebuild": "npm --prefix ../.. run build --workspace=@subhog/api-client",
     "build": "expo export --platform web",
     "eas-build-post-install": "npm --prefix ../.. run build --workspace=@subhog/api-client"

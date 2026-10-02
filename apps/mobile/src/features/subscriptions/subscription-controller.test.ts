@@ -289,6 +289,43 @@ for (const code of [
   });
 }
 
+test("allows provisioning again after a recoverable profile-name correction", async () => {
+  const unprovisioned = {
+    ...identityFixture,
+    userId: null,
+    provisioned: false,
+  } as const;
+  let attempts = 0;
+  const { api, calls } = mockApi({
+    getIdentity: async () => unprovisioned,
+    provisionIdentity: async () => {
+      calls.provision += 1;
+      attempts += 1;
+      if (attempts === 1) {
+        throw new ApiError("Complete your profile", {
+          code: "PROFILE_INCOMPLETE",
+          kind: "validation",
+        });
+      }
+      return provisionedIdentityFixture;
+    },
+  });
+  const controller = new SubscriptionController(api);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: unprovisioned.clerkUserId,
+    sessionId: "session-one",
+  });
+  await tick();
+
+  await controller.provision();
+  assert.equal(controller.getState().status, "error");
+  await controller.provision();
+
+  assert.equal(calls.provision, 2);
+  assert.equal(controller.getState().status, "ready");
+});
+
 for (const stage of ["identity", "provision", "list"] as const) {
   test(`clears and ignores stale ${stage} completion on sign-out`, async () => {
     const pendingIdentity = deferred<typeof identityFixture>();

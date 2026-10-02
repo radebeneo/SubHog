@@ -1,6 +1,10 @@
 const required = (value, name) => {
-    if (!value) {
+    if (typeof value !== 'string' || !value.trim()) {
         throw new Error(`${name} is required for Clerk profile retrieval`);
+    }
+
+    if (value !== value.trim()) {
+        throw new Error(`${name} must not have leading or trailing whitespace`);
     }
 
     return value;
@@ -26,8 +30,10 @@ export const createClerkProfileConfig = (source = process.env) => {
         throw new Error('CLERK_API_BASE_URL must be a credential-free HTTPS origin');
     }
 
-    const timeoutMs = Number(required(source.CLERK_PROFILE_TIMEOUT_MS, 'CLERK_PROFILE_TIMEOUT_MS'));
-    if (!Number.isInteger(timeoutMs)
+    const rawTimeoutMs = required(source.CLERK_PROFILE_TIMEOUT_MS, 'CLERK_PROFILE_TIMEOUT_MS');
+    const timeoutMs = Number(rawTimeoutMs);
+    if (!/^\d+$/.test(rawTimeoutMs)
+        || !Number.isSafeInteger(timeoutMs)
         || timeoutMs <= 0
         || timeoutMs > MAX_CLERK_PROFILE_TIMEOUT_MS) {
         throw new Error(

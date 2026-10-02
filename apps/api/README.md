@@ -71,10 +71,46 @@ The **Subscription Tracker API** is a comprehensive solution for users to manage
     JWT_EXPIRES_IN=1d
     ARCJET_KEY=your_arcjet_key
     ARCJET_ENV=development
-    QSTASH_URL=your_upstash_qstash_url
-    QSTASH_TOKEN=your_upstash_qstash_token
-    EMAIL_PASSWORD=your_email_app_password
-    ```
+     QSTASH_URL=your_upstash_qstash_url
+     QSTASH_TOKEN=your_upstash_qstash_token
+     EMAIL_PASSWORD=your_email_app_password
+
+     # Clerk JWT verification (all required)
+     CLERK_JWKS_URL=https://your-clerk-domain/.well-known/jwks.json
+     CLERK_ISSUER=https://your-clerk-domain
+     CLERK_AUDIENCE=subscription-tracker
+     CLERK_ALLOWED_ALGORITHMS=RS256
+     CLERK_AUTHORIZED_PARTY_POLICY=required
+     CLERK_AUTHORIZED_PARTIES=https://your-app.example
+     CLERK_CLOCK_SKEW_SECONDS=5
+     CLERK_JWKS_TIMEOUT_MS=5000
+     CLERK_JWKS_REFRESH_COOLDOWN_MS=30000
+     CLERK_JWKS_CACHE_MAX_AGE_MS=600000
+
+     # Clerk profile retrieval (required when provisioning can be used)
+     CLERK_API_BASE_URL=https://api.clerk.com
+     CLERK_SECRET_KEY=sk_live_replace_me
+     CLERK_PROFILE_TIMEOUT_MS=5000
+
+     # Identity provisioning gate
+     IDENTITY_PROVISIONING_ENABLED=false
+     DB_RESOURCE_ID=production-database
+     IDENTITY_PROVISIONING_RESOURCE_ID=production-database
+     IDENTITY_PROVISIONING_RESOURCE_CONFIRMATION=ENABLE_PROVISIONING:production-database
+     ```
+
+### Clerk Verification Policy
+
+The production process validates the complete Clerk verifier configuration before opening the HTTP listener. Remote JWKS retrieval remains lazy: keys are fetched only when a Clerk JWT first needs verification, then cached and refreshed within the configured timeout, cooldown, and cache limits.
+
+`CLERK_AUDIENCE` is a comma-separated allowlist matched against the JWT `aud` claim. Set it to the audience configured in the Clerk JWT template used by clients. `CLERK_AUTHORIZED_PARTY_POLICY` must be explicit:
+
+- `required` requires an `azp` claim present in the comma-separated `CLERK_AUTHORIZED_PARTIES` allowlist.
+- `absent` requires the JWT to omit `azp`; leave `CLERK_AUTHORIZED_PARTIES` unset.
+
+The API accepts identity only from verified Clerk JWT claims. It does not use native iOS/Android headers or client-provided user identifiers as identity evidence. Before release, obtain fresh session tokens from live iOS and Android builds and run `npm run test:integration:clerk-api --workspace=@subhog/api` with `INTEGRATION_CLERK_TOKEN_PRIMARY` and `INTEGRATION_CLERK_TOKEN_SECONDARY`. Confirm each platform token has the configured `iss` and `aud`, plus an `azp` that either matches the required allowlist or is absent under the `absent` policy. This live check matters because development tokens and platform session templates can carry different claims.
+
+Provisioning is disabled unless `IDENTITY_PROVISIONING_ENABLED=true`. When enabled, `DB_RESOURCE_ID` and `IDENTITY_PROVISIONING_RESOURCE_ID` must match, and `IDENTITY_PROVISIONING_RESOURCE_CONFIRMATION` must equal `ENABLE_PROVISIONING:<resource-id>`. `CLERK_API_BASE_URL` must be a credential-free HTTPS origin; `CLERK_SECRET_KEY` is used only for server-side profile retrieval.
 
 ### Running the Application
 
