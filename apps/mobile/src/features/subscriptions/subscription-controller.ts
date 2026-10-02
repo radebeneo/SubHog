@@ -129,7 +129,8 @@ export class SubscriptionController {
         ? this.state.identity
         : this.state.status === "error" &&
             this.state.failure.operation === "provision" &&
-            this.state.failure.retryable
+            (this.state.failure.retryable ||
+              this.state.failure.code === "PROFILE_INCOMPLETE")
           ? this.state.identity
           : null;
     if (!identity || !this.scope?.isCurrent()) return Promise.resolve();

@@ -13,7 +13,10 @@ export declare const API_ERROR_CODES: readonly [
   "NOT_OWNER",
   "USER_NOT_FOUND",
   "DATA_INTEGRITY_ERROR",
-  "SUBSCRIPTIONS_READ_FAILED"
+  "SUBSCRIPTIONS_READ_FAILED",
+  "SUBSCRIPTION_NOT_FOUND",
+  "SUBSCRIPTION_READ_FAILED",
+  "SUBSCRIPTION_WRITE_FAILED"
 ];
 export declare const SUBSCRIPTION_CURRENCIES: readonly ["USD", "GBP", "ZAR"];
 export declare const SUBSCRIPTION_FREQUENCIES: readonly [
@@ -92,6 +95,28 @@ export interface OwnedSubscriptionsParams {
   userId: string;
 }
 
+export declare const SUBSCRIPTION_UPDATE_FIELDS: readonly [
+  "name",
+  "price",
+  "currency",
+  "frequency",
+  "category",
+  "paymentMethod",
+  "startDate",
+  "renewalDate"
+];
+
+export interface UpdateSubscriptionRequest {
+  name?: string;
+  price?: number;
+  currency?: SubscriptionCurrency;
+  frequency?: SubscriptionFrequency;
+  category?: SubscriptionCategory;
+  paymentMethod?: string;
+  startDate?: string;
+  renewalDate?: string;
+}
+
 export declare function isApiErrorCode(value: unknown): value is ApiErrorCode;
 export declare function isApiSuccessEnvelope<T>(
   value: unknown,
@@ -106,6 +131,12 @@ export declare function isProvisionIdentityRequest(
 export declare function isOwnedSubscriptionsParams(
   value: unknown,
 ): value is OwnedSubscriptionsParams;
+export declare function isUpdateSubscriptionRequest(
+  value: unknown,
+): value is UpdateSubscriptionRequest;
+export declare function isEmptyMutationRequest(
+  value: unknown,
+): value is ProvisionIdentityRequest | undefined;
 export declare function isIdentityDto(value: unknown): value is IdentityDto;
 export declare function isProvisionedIdentityDto(
   value: unknown,

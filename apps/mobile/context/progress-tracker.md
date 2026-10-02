@@ -28,7 +28,7 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- API-04 route migration and live Clerk/API configuration validation remain external gates
+- Live Clerk token-claim and public API acceptance remain deployment-environment gates
 
 ## Completed
 
@@ -38,7 +38,7 @@ Update this file after every meaningful implementation change.
 - Analytics payloads have been sanitized and typed to avoid invalid optional values and unsupported payload fields
 - `.env.example` documents the actual public PostHog env names alongside the required Clerk key
 - Focused PostHog config validation tests pass in Node without contacting external services
-- CONTRACT-01 revision 2.2 is synchronized from the owner-approved API repository copy
+- The repository-level [`CONTRACT-01`](../../../docs/contracts/CONTRACT-01.md) is the sole canonical human-readable identity and owned-subscription contract
 - API client recovery coordinates concurrent reads, rejects stale or cancelled responses, limits reads to one replay, never replays mutations, and redacts observed credentials
 - Reproducible API/test typechecking is available through `npm run typecheck:api`
 - EXPO-03 wires Clerk's ordinary session token into the API client after auth readiness
@@ -51,19 +51,24 @@ Update this file after every meaningful implementation change.
 - Isolated orchestration tests cover auth readiness, provisioning, stale work, contracted failures, DTO edge cases, fixture absence, and token-safe errors
 - EXPO-03 closeout coverage asserts immediate session-data removal, stale resolve/reject isolation, no stale follow-on requests, unchanged-auth idempotence, and preserved transport failure classification
 - INT-01B preparation strengthens sign-out coverage against stale follow-on list requests and requires the public API base URL to contain the canonical `/api/v1` path exactly once
+- Clerk verifier configuration is validated before the API listener starts while remote JWKS retrieval remains lazy
+- Duplicate raw `Authorization` headers are rejected and Clerk-only routes do not fall back to legacy JWT authentication
+- Subscription detail, update, cancellation, and deletion routes resolve the Clerk association and use owner-scoped compound database predicates
+- Subscription item responses use the shared allowlisted DTO; malformed, missing, and cross-owner item IDs are indistinguishable
+- Signup validates the server-derived combined profile name against the 2-through-20-character contract
+- `PROFILE_INCOMPLETE` provisioning failures expose an in-app Clerk profile-name recovery flow and explicit provisioning retry
+- Repository tests, typechecks, lint, and the web export build pass; the build requires the configured Clerk publishable key as intended
 
 ## Next Up
 
-1. Complete API-04 migration of `GET /api/v1/subscriptions/user/:id`
-2. Verify the ordinary Clerk session-token claim policy and live public API base URL
-3. Run live end-to-end acceptance only after the backend and credential configuration gates are complete
+1. Verify the ordinary Clerk session-token claim policy and live public API base URL
+2. Run live end-to-end acceptance with approved Clerk credentials and the resource-bound database configuration
+3. Wire mobile subscription mutation screens to the protected item endpoints when that product scope is scheduled
 
 ## Open Questions
 
-- What font family is used for `--font-sans`? The CSS token is set but no font loading code was found in `app/_layout.tsx`. The font must be loaded with `expo-font` before it can be used.
 - Should the home screen show a user avatar image or an initials placeholder when no photo exists?
 - What categories should be available in the Add Subscription modal? (Suggested: Entertainment, Productivity, Health & Fitness, Finance, Education, Shopping, Utilities, Other)
-- Should "Cancel Subscription" in the expanded card actually delete the record, or mark it as cancelled with a different visual state?
 - Is AsyncStorage already installed, or does it need to be added? (`@react-native-async-storage/async-storage` is not in `package.json`)
 
 ## Architecture Decisions
@@ -71,7 +76,8 @@ Update this file after every meaningful implementation change.
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
 - Clerk is the active authentication authority; API requests use its ordinary active-session token
 - The remote API is authoritative for identity association and owned subscription reads
-- Subscription mutations remain disabled in integrated mode until separately contracted
+- Subscription mutations remain disabled in integrated mobile mode until the client workflows are implemented against the protected backend contract
+- Cancellation marks a subscription as `cancelled`; deletion remains a separate explicit operation
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
 

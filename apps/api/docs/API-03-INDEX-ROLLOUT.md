@@ -38,9 +38,9 @@ Configure the profile adapter separately from the API-02 verifier:
 - `CLERK_SECRET_KEY`: the server-only Clerk secret
 - `CLERK_PROFILE_TIMEOUT_MS`: a positive bounded request timeout
 
-The API-02 verifier variables remain independently required. Live enablement
-also remains blocked until the credential and profile configuration facts in
-section 9 of `CONTRACT-01.md` are confirmed.
+The Clerk verifier variables remain independently required. Live enablement
+also requires the credential and profile configuration described by the
+canonical [`CONTRACT-01`](../../../docs/contracts/CONTRACT-01.md#clerk-credential-policy).
 
 The application does not delete, rewrite, link, or repair existing users during
 index rollout. Any invalid or duplicate association requires a separately

@@ -1,4 +1,10 @@
 import mongoose from 'mongoose';
+import {
+    SUBSCRIPTION_CATEGORIES,
+    SUBSCRIPTION_CURRENCIES,
+    SUBSCRIPTION_FREQUENCIES,
+    SUBSCRIPTION_STATUSES,
+} from '@subhog/contracts';
 
 const subscriptionSchema = new mongoose.Schema({
 
@@ -16,16 +22,16 @@ const subscriptionSchema = new mongoose.Schema({
     },
     currency: {
         type: String,
-        enum: ['USD', 'GBP', 'ZAR'],
+        enum: SUBSCRIPTION_CURRENCIES,
         default: 'ZAR'
     },
     frequency: {
         type: String,
-        enum: ['daily', 'weekly', 'monthly', 'yearly'],
+        enum: SUBSCRIPTION_FREQUENCIES,
     },
     category:{
         type: String,
-        enum: ['sports', 'news', 'entertainment', 'education', 'health', 'others'],
+        enum: SUBSCRIPTION_CATEGORIES,
         required: true
     },
     paymentMethod: {
@@ -35,7 +41,7 @@ const subscriptionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'cancelled', 'expired'],
+        enum: SUBSCRIPTION_STATUSES,
         default: 'active'
     },
     startDate: {
@@ -83,7 +89,7 @@ subscriptionSchema.pre('save', async function() {
     }
 
     // Auto update subscription status if renewal date has passed
-    if (this.renewalDate < new Date()){
+    if (this.status !== 'cancelled' && this.renewalDate < new Date()){
         this.status = 'expired';
     }
 })

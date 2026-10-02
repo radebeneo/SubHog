@@ -1,5 +1,9 @@
 import images from "@/config/images";
 import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
+import {
+  isValidProfileName,
+  normalizeProfileNamePart,
+} from "@/features/profile/profile-name";
 import { useAuth, useSignUp } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -36,15 +40,13 @@ const SignUp = () => {
   const [passwordTouched, setPasswordTouched] = useState(false);
 
   // Client-side validation
-  const firstNameValid = firstName.trim().length > 0 || firstName.length === 0;
-  const lastNameValid = lastName.trim().length > 0 || lastName.length === 0;
+  const profileNameValid = isValidProfileName(firstName, lastName);
   const emailValid =
     emailAddress.length === 0 ||
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
   const passwordValid = password.length === 0 || password.length >= 8;
   const formValid =
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
+    profileNameValid &&
     emailAddress.length > 0 &&
     password.length >= 8 &&
     emailValid;
@@ -53,8 +55,8 @@ const SignUp = () => {
     if (!formValid) return;
 
     const { error } = await signUp.password({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: normalizeProfileNamePart(firstName),
+      lastName: normalizeProfileNamePart(lastName),
       emailAddress,
       password,
     });
@@ -238,7 +240,7 @@ const SignUp = () => {
                 <View className="auth-field">
                   <Text className="auth-label">First Name</Text>
                   <TextInput
-                    className={`auth-input ${firstNameTouched && !firstNameValid && "auth-input-error"}`}
+                    className={`auth-input ${firstNameTouched && !profileNameValid && "auth-input-error"}`}
                     value={firstName}
                     placeholder="John"
                     placeholderTextColor="rgba(0, 0, 0, 0.4)"
@@ -247,17 +249,12 @@ const SignUp = () => {
                     autoCapitalize="words"
                     autoComplete="given-name"
                   />
-                  {firstNameTouched && !firstNameValid && (
-                    <Text className="auth-error">
-                      Please enter your first name
-                    </Text>
-                  )}
                 </View>
 
                 <View className="auth-field">
                   <Text className="auth-label">Last Name</Text>
                   <TextInput
-                    className={`auth-input ${lastNameTouched && !lastNameValid && "auth-input-error"}`}
+                    className={`auth-input ${lastNameTouched && !profileNameValid && "auth-input-error"}`}
                     value={lastName}
                     placeholder="Doe"
                     placeholderTextColor="rgba(0, 0, 0, 0.4)"
@@ -266,9 +263,9 @@ const SignUp = () => {
                     autoCapitalize="words"
                     autoComplete="family-name"
                   />
-                  {lastNameTouched && !lastNameValid && (
+                  {(firstNameTouched || lastNameTouched) && !profileNameValid && (
                     <Text className="auth-error">
-                      Please enter your last name
+                      Your combined name must be 2 to 20 characters
                     </Text>
                   )}
                 </View>

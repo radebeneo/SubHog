@@ -7,20 +7,20 @@ import type {
 export const identityFixture: IdentityDto = {
   provider: "clerk",
   clerkUserId: "user_2abc123",
-  userId: "665f000000000000000001",
+  userId: "665f00000000000000000001",
   provisioned: true,
 };
 
 export const provisionedIdentityFixture: ProvisionedIdentityDto = {
   provider: "clerk",
   clerkUserId: "user_2abc123",
-  userId: "665f000000000000000001",
+  userId: "665f00000000000000000001",
   email: "owner@example.test",
   name: "Owner Example",
 };
 
 export const subscriptionFixture: SubscriptionDto = {
-  _id: "665f000000000000000010",
+  _id: "665f00000000000000000010",
   name: "Example Plus",
   price: 12.5,
   currency: "USD",
@@ -30,7 +30,7 @@ export const subscriptionFixture: SubscriptionDto = {
   status: "active",
   startDate: "2026-01-01T00:00:00.000Z",
   renewalDate: "2026-02-01T00:00:00.000Z",
-  user: "665f000000000000000001",
+  user: "665f00000000000000000001",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };

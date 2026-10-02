@@ -50,6 +50,9 @@ const backendErrorKinds: Record<ApiErrorCode, ApiErrorKind> = {
   USER_NOT_FOUND: "validation",
   DATA_INTEGRITY_ERROR: "server",
   SUBSCRIPTIONS_READ_FAILED: "server",
+  SUBSCRIPTION_NOT_FOUND: "validation",
+  SUBSCRIPTION_READ_FAILED: "server",
+  SUBSCRIPTION_WRITE_FAILED: "server",
 };
 
 export function classifyBackendError(

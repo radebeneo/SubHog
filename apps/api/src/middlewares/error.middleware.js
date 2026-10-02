@@ -2,10 +2,13 @@ const errorMiddleware = (err, req, res, next) => {
     try{
         let error = err;
 
-        if (err.type === 'entity.parse.failed'
-            && req.method === 'POST'
-            && req.originalUrl?.split('?')[0] === '/api/v1/identity/provision') {
-            error = new Error('The request body must be an empty JSON object');
+        if (err.type === 'entity.parse.failed') {
+            const path = req.originalUrl?.split('?')[0];
+            error = new Error(
+                req.method === 'POST' && path === '/api/v1/identity/provision'
+                    ? 'The request body must be an empty JSON object'
+                    : 'The request body must contain valid JSON',
+            );
             error.statusCode = 400;
             error.code = 'REQUEST_INVALID';
         }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 
 import {
     createClerkProfileConfig,
@@ -16,6 +17,7 @@ import {
     IdentityApiError,
     MAX_CLERK_PROFILE_BODY_BYTES,
 } from '../src/services/clerk-profile.js';
+import { createClerkVerifier } from '../src/services/clerk-verifier.js';
 import { createIdentityService } from '../src/services/identity-service.js';
 
 const identity = { provider: 'clerk', subject: 'user_subject' };
@@ -184,6 +186,16 @@ test('Clerk profile configuration is separate, pinned to an HTTPS origin, and bo
         CLERK_SECRET_KEY: 'secret',
         CLERK_PROFILE_TIMEOUT_MS: String(MAX_CLERK_PROFILE_TIMEOUT_MS + 1),
     }), /must be an integer/);
+    assert.throws(() => createClerkProfileConfig({
+        CLERK_API_BASE_URL: 'https://api.clerk.test',
+        CLERK_SECRET_KEY: '   ',
+        CLERK_PROFILE_TIMEOUT_MS: '1500',
+    }), /CLERK_SECRET_KEY/);
+    assert.throws(() => createClerkProfileConfig({
+        CLERK_API_BASE_URL: 'https://api.clerk.test',
+        CLERK_SECRET_KEY: 'secret',
+        CLERK_PROFILE_TIMEOUT_MS: ' 1500',
+    }), /whitespace/);
 });
 
 test('profile adapter builds the subject path, blocks redirects, and selects verified primary email', async () => {
@@ -424,6 +436,59 @@ test('invalid authentication retains the exact 401 envelope and prevents identit
             message: 'The authentication credential is invalid',
         });
         assert.equal(databaseCalls, 0);
+    } finally {
+        server.close();
+    }
+});
+
+test('valid legacy JWTs are rejected on every Clerk-only identity route', async () => {
+    let serviceCalls = 0;
+    const service = {
+        resolveIdentity: async () => { serviceCalls += 1; },
+        provisionIdentity: async () => { serviceCalls += 1; },
+    };
+    const verifier = createClerkVerifier({
+        jwksUrl: new URL('https://clerk.example.test/.well-known/jwks.json'),
+        issuer: 'https://issuer.example.test',
+        audience: ['subscription-tracker-test'],
+        algorithms: ['RS256'],
+        authorizedPartyPolicy: 'absent',
+        authorizedParties: [],
+        clockTolerance: 0,
+        jwksTimeout: 100,
+        jwksCooldown: 100,
+        jwksCacheMaxAge: 1000,
+    }, {
+        jwks: async () => {
+            throw new Error('legacy JWT must not reach key resolution');
+        },
+    });
+    const legacyToken = jwt.sign(
+        { userId: 'legacy-user' },
+        'valid-legacy-secret',
+        { expiresIn: '5m' },
+    );
+    const { server, url } = await startIdentityServer({ service, verify: verifier });
+
+    try {
+        const requests = [
+            fetch(url, { headers: { authorization: `Bearer ${legacyToken}` } }),
+            fetch(`${url}/provision`, {
+                method: 'POST',
+                headers: { authorization: `Bearer ${legacyToken}` },
+            }),
+        ];
+
+        for (const request of requests) {
+            const response = await request;
+            assert.equal(response.status, 401);
+            assert.deepEqual(await response.json(), {
+                success: false,
+                code: 'AUTH_INVALID',
+                message: 'The authentication credential is invalid',
+            });
+        }
+        assert.equal(serviceCalls, 0);
     } finally {
         server.close();
     }
