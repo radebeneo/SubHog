@@ -201,7 +201,10 @@ function ProfileRecoveryForm({
             <TextInput
               className="auth-input"
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(value) => {
+                setFirstName(value);
+                setProfileError(null);
+              }}
               autoCapitalize="words"
               autoComplete="given-name"
               editable={!profileSaving}
@@ -212,7 +215,10 @@ function ProfileRecoveryForm({
             <TextInput
               className="auth-input"
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(value) => {
+                setLastName(value);
+                setProfileError(null);
+              }}
               autoCapitalize="words"
               autoComplete="family-name"
               editable={!profileSaving}

@@ -9,6 +9,7 @@ import { isNonNegativeMoneyAmount } from '@subhog/domain';
 
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
+import { workflowClient } from '../config/upstash.js';
 
 const CURRENCIES = new Set(SUBSCRIPTION_CURRENCIES);
 const FREQUENCIES = new Set(SUBSCRIPTION_FREQUENCIES);
@@ -151,12 +152,14 @@ const findSubscription = (subscriptionId, associatedUserId) => Subscription.find
 const findSubscriptionDocument = (subscriptionId, associatedUserId) => Subscription.findOne({
     _id: subscriptionId,
     user: associatedUserId,
-}).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).exec();
+}).select([...OWNED_SUBSCRIPTION_FIELDS, 'workflowRunId'].join(' ')).exec();
 
 const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.findOneAndDelete({
     _id: subscriptionId,
     user: associatedUserId,
-}).select('_id').lean().exec();
+}).select('_id workflowRunId').lean().exec();
+
+const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
 
 const resolveAssociatedUserId = async (identity, associationLookup, failure) => {
     let associatedUser;
@@ -221,7 +224,22 @@ export const createOwnedSubscriptionService = ({
     itemLookup = findSubscription,
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
+    workflowCancellation = cancelWorkflow,
+    workflowCancellationError = console.error,
 } = {}) => {
+    const cancelTrackedWorkflow = async (subscription) => {
+        if (!subscription.workflowRunId) return;
+
+        try {
+            await workflowCancellation({ ids: subscription.workflowRunId });
+        } catch (error) {
+            workflowCancellationError(
+                `Could not cancel reminder workflow ${subscription.workflowRunId}`,
+                error,
+            );
+        }
+    };
+
     const listOwnedSubscriptions = async (identity, requestedId) => {
         const canonicalRequestedId = canonicalObjectId(requestedId);
         if (!canonicalRequestedId) {
@@ -316,6 +334,7 @@ export const createOwnedSubscriptionService = ({
             subscription.status = 'cancelled';
             subscription = await saveSubscription(subscription);
         }
+        await cancelTrackedWorkflow(subscription);
         return serializeForOwner(subscription, associatedUserId);
     };
 
@@ -334,6 +353,7 @@ export const createOwnedSubscriptionService = ({
             throw subscriptionWriteFailed();
         }
         if (!deleted) throw subscriptionNotFound();
+        await cancelTrackedWorkflow(deleted);
     };
 
     return {

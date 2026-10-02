@@ -234,8 +234,9 @@ test('update rejects server-controlled fields and saves only allowlisted values'
 });
 
 test('cancel requires an empty body, is idempotent, and returns the DTO', async () => {
-    const document = cloneDocument();
+    const document = cloneDocument({ workflowRunId: 'wfr_cancel-me' });
     let saves = 0;
+    const cancellations = [];
     document.save = async function save() {
         saves += 1;
         this.updatedAt = new Date('2026-01-03T00:00:00.000Z');
@@ -246,6 +247,10 @@ test('cancel requires an empty body, is idempotent, and returns the DTO', async 
         itemDocumentLookup: async (id, user) => {
             assert.deepEqual({ id, user }, { id: subscriptionId, user: ownerId });
             return document;
+        },
+        workflowCancellation: async (request) => {
+            assert.equal(document.status, 'cancelled');
+            cancellations.push(request);
         },
     });
     const { server, url } = await startServer({ service });
@@ -274,6 +279,10 @@ test('cancel requires an empty body, is idempotent, and returns the DTO', async 
             assert.equal((await response.json()).data.status, 'cancelled');
         }
         assert.equal(saves, 1);
+        assert.deepEqual(cancellations, [
+            { ids: 'wfr_cancel-me' },
+            { ids: 'wfr_cancel-me' },
+        ]);
     } finally {
         server.close();
     }
@@ -281,11 +290,18 @@ test('cancel requires an empty body, is idempotent, and returns the DTO', async 
 
 test('delete uses a compound owner predicate and returns 204 without a body', async () => {
     let deletedBy;
+    let deleted = false;
+    const cancellations = [];
     const service = createOwnedSubscriptionService({
         associationLookup: async () => ({ _id: ownerId }),
         itemDelete: async (id, user) => {
             deletedBy = { id, user };
-            return { _id: id };
+            deleted = true;
+            return { _id: id, workflowRunId: 'wfr_delete-me' };
+        },
+        workflowCancellation: async (request) => {
+            assert.equal(deleted, true);
+            cancellations.push(request);
         },
     });
     const { server, url } = await startServer({ service });
@@ -298,7 +314,27 @@ test('delete uses a compound owner predicate and returns 204 without a body', as
         assert.equal(response.status, 204);
         assert.equal(await response.text(), '');
         assert.deepEqual(deletedBy, { id: subscriptionId, user: ownerId });
+        assert.deepEqual(cancellations, [{ ids: 'wfr_delete-me' }]);
     } finally {
         server.close();
     }
+});
+
+test('a workflow cancellation failure does not reopen a cancelled subscription', async () => {
+    const document = cloneDocument({ workflowRunId: 'wfr_unavailable' });
+    const errors = [];
+    const service = createOwnedSubscriptionService({
+        associationLookup: async () => ({ _id: ownerId }),
+        itemDocumentLookup: async () => document,
+        workflowCancellation: async () => {
+            throw new Error('QStash unavailable');
+        },
+        workflowCancellationError: (...args) => errors.push(args),
+    });
+
+    const result = await service.cancelOwnedSubscription(identity, subscriptionId);
+
+    assert.equal(result.status, 'cancelled');
+    assert.equal(document.status, 'cancelled');
+    assert.equal(errors.length, 1);
 });

@@ -10,15 +10,23 @@ import {sendReminderEmail} from "../utils/send-email.js";
 const REMINDERS = [7, 5, 2, 1]
 
 
-export const sendReminders  = serve(async(context) => {
+export const createReminderWorkflow = ({
+    findSubscription = (subscriptionId) => Subscription.findById(subscriptionId),
+    findDeliverableSubscription = (subscriptionId) => Subscription.findOne({
+        _id: subscriptionId,
+        status: 'active',
+    }).populate('user', 'name email'),
+    sendReminder = sendReminderEmail,
+    now = () => dayjs(),
+} = {}) => async (context) => {
     const { subscriptionId } = context.requestPayload;
-    const subscription = await fetchSubscription(context, subscriptionId)
+    const subscription = await fetchSubscription(context, subscriptionId, findSubscription)
 
     if(!subscription || subscription.status !== 'active') return
 
     const renewalDate = dayjs(subscription.renewalDate)
 
-    if(renewalDate.isBefore(dayjs())) {
+    if(renewalDate.isBefore(now())) {
         console.log(`Renewal date had passed for subscription ${subscriptionId}. Stopping workflow.`)
         return
     }
@@ -27,20 +35,32 @@ export const sendReminders  = serve(async(context) => {
         const reminderDate = renewalDate.subtract(daysBefore, 'day')
 
 
-        if(reminderDate.isAfter(dayjs())) {
+        if(reminderDate.isAfter(now())) {
             await sleepUntilReminder(context, `${daysBefore} days before`, reminderDate)
         }
 
-        if(dayjs().isSame(reminderDate, 'day')) {
-            await triggerReminder(context, `${daysBefore} days before reminder`, subscription)
+        if(now().isSame(reminderDate, 'day')) {
+            const delivered = await triggerReminder(
+                context,
+                `${daysBefore} days before reminder`,
+                subscriptionId,
+                findDeliverableSubscription,
+                sendReminder,
+            )
+            if (!delivered) {
+                await context.cancel()
+                return
+            }
         }
 
     }
-})
+}
 
-const fetchSubscription = async (context, subscriptionId) => {
+export const sendReminders = serve(createReminderWorkflow())
+
+const fetchSubscription = async (context, subscriptionId, findSubscription) => {
     return await context.run('get subscription', async () => {
-        return Subscription.findById(subscriptionId).populate('user', 'name email');
+        return findSubscription(subscriptionId)
     })
 }
 
@@ -49,15 +69,25 @@ const sleepUntilReminder = async (context, label, date) => {
     await context.sleepUntil(label, date.toDate())
 }
 
-const triggerReminder = async (context, label, subscription) => {
+const triggerReminder = async (
+    context,
+    label,
+    subscriptionId,
+    findDeliverableSubscription,
+    sendReminder,
+) => {
 
     return await context.run(label, async () => {
+        const subscription = await findDeliverableSubscription(subscriptionId)
+        if (subscription?.status !== 'active' || !subscription.user?.email) return false
+
         console.log(`Triggering ${label}`);
 
-        await sendReminderEmail({
+        await sendReminder({
             to: subscription.user.email,
             type: label,
             subscription,
         })
+        return true
     })
 }
