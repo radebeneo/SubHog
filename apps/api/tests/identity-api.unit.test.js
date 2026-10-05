@@ -809,7 +809,7 @@ test('account deletion scopes cleanup to the authenticated association and is id
     ]);
 });
 
-test('account deletion ignores workflow lookup and cancellation failures', async () => {
+test('account deletion keeps data when workflow lookup or cancellation fails', async () => {
     const deleted = [];
     const logged = [];
     const lookupFailureService = createIdentityService({
@@ -820,30 +820,34 @@ test('account deletion ignores workflow lookup and cancellation failures', async
         ownedSubscriptionsDelete: async (associatedUserId) => {
             deleted.push(['subscriptions', associatedUserId]);
         },
-        associatedUserDelete: async (receivedIdentity, associatedUserId) => {
-            deleted.push(['user', receivedIdentity, associatedUserId]);
+        associatedUserDelete: async () => {
+            deleted.push(['user']);
         },
         workflowCancellationError: (...args) => logged.push(args),
     });
 
-    await lookupFailureService.deleteIdentity(identity);
-    assert.deepEqual(deleted, [
-        ['subscriptions', storedUser._id],
-        ['user', identity, storedUser._id],
-    ]);
+    await assert.rejects(
+        lookupFailureService.deleteIdentity(identity),
+        { code: 'ACCOUNT_DELETE_FAILED' },
+    );
+    assert.deepEqual(deleted, []);
     assert.equal(logged.length, 1);
 
     const cancellationService = createIdentityService({
         associationLookup: async () => ({ _id: storedUser._id }),
         reminderWorkflowLookup: async () => [{ workflowRunId: 'workflow-one' }],
-        ownedSubscriptionsDelete: async () => undefined,
-        associatedUserDelete: async () => undefined,
+        ownedSubscriptionsDelete: async () => deleted.push(['subscriptions']),
+        associatedUserDelete: async () => deleted.push(['user']),
         workflowCancellation: async () => {
             throw new Error('provider details');
         },
         workflowCancellationError: (...args) => logged.push(args),
     });
-    await cancellationService.deleteIdentity(identity);
+    await assert.rejects(
+        cancellationService.deleteIdentity(identity),
+        { code: 'ACCOUNT_DELETE_FAILED' },
+    );
+    assert.deepEqual(deleted, []);
     assert.equal(logged.length, 2);
 });
 

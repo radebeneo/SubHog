@@ -90,7 +90,8 @@ function SubscriptionModalContent({
     const payload: CreateSubscriptionRequest = {
       name: name.trim(),
       price: numericPrice,
-      currency: "ZAR",
+      currency: (initialSubscription?.currency ??
+        "ZAR") as CreateSubscriptionRequest["currency"],
       frequency,
       category,
       paymentMethod: paymentMethod.trim(),

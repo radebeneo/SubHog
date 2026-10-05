@@ -240,6 +240,7 @@ export const createIdentityService = ({
             if (Array.isArray(found)) subscriptions = found;
         } catch (error) {
             workflowCancellationError('Could not gather account reminder workflows', error);
+            throw accountDeleteFailed();
         }
         const workflowIds = [...new Set(
             subscriptions
@@ -252,6 +253,7 @@ export const createIdentityService = ({
                 await workflowCancellation(workflowIds);
             } catch (error) {
                 workflowCancellationError('Could not cancel account reminder workflows', error);
+                throw accountDeleteFailed();
             }
         }
 

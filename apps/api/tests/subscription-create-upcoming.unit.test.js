@@ -162,7 +162,9 @@ test('create rejects server-controlled fields and legacy credentials before writ
 });
 
 test('create maps reminder scheduling failures to the generic write envelope', async () => {
+    const rolledBack = [];
     const service = createOwnedSubscriptionService({
+        subscriptionRollback: async (id) => rolledBack.push(id),
         associationLookup: async () => ({ _id: ownerId }),
         subscriptionCreate: async (attributes) => ({
             ...baseSubscription,
@@ -190,9 +192,36 @@ test('create maps reminder scheduling failures to the generic write envelope', a
             code: 'SUBSCRIPTION_WRITE_FAILED',
             message: 'The subscription could not be changed',
         });
+        assert.deepEqual(rolledBack, [subscriptionId]);
     } finally {
         server.close();
     }
+});
+
+test('create rolls back the subscription and cancels the workflow when tracking fails', async () => {
+    const rolledBack = [];
+    const cancelled = [];
+    const service = createOwnedSubscriptionService({
+        associationLookup: async () => ({ _id: ownerId }),
+        subscriptionCreate: async (attributes) => ({
+            ...baseSubscription,
+            ...attributes,
+            renewalDate: baseSubscription.renewalDate,
+        }),
+        reminderScheduling: async () => ({ workflowRunId: 'wfr_orphan' }),
+        reminderTracking: async () => {
+            throw new Error('tracking failed');
+        },
+        subscriptionRollback: async (id) => rolledBack.push(id),
+        workflowCancellation: async (request) => cancelled.push(request),
+    });
+
+    await assert.rejects(
+        service.createOwnedSubscription(identity, createBody),
+        { code: 'SUBSCRIPTION_WRITE_FAILED' },
+    );
+    assert.deepEqual(rolledBack, [subscriptionId]);
+    assert.deepEqual(cancelled, [{ ids: 'wfr_orphan' }]);
 });
 
 test('upcoming renewals infer the owner and sort active future DTOs', async () => {

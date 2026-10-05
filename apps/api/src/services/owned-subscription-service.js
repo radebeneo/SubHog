@@ -175,6 +175,10 @@ const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.fi
 
 const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
 
+const rollbackSubscription = (subscriptionId) => (
+    Subscription.findByIdAndDelete(subscriptionId).select('_id').lean().exec()
+);
+
 const createSubscription = (attributes) => Subscription.create(attributes);
 
 const scheduleReminder = ({ subscriptionId }) => workflowClient.trigger({
@@ -253,6 +257,7 @@ export const createOwnedSubscriptionService = ({
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
     subscriptionCreate = createSubscription,
+    subscriptionRollback = rollbackSubscription,
     reminderScheduling = scheduleReminder,
     reminderTracking = trackReminderWorkflow,
     workflowCancellation = cancelWorkflow,
@@ -339,13 +344,25 @@ export const createOwnedSubscriptionService = ({
         }
 
         const serialized = serializeForOwner(subscription, associatedUserId);
+        let scheduledRunId;
         try {
             const { workflowRunId } = await reminderScheduling({
                 subscriptionId: serialized._id,
             });
             if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
+            scheduledRunId = workflowRunId;
             await reminderTracking(serialized._id, workflowRunId);
         } catch {
+            // Avoid leaving a saved subscription behind so a retry cannot duplicate it.
+            await cancelTrackedWorkflow({ workflowRunId: scheduledRunId });
+            try {
+                await subscriptionRollback(serialized._id);
+            } catch (error) {
+                workflowCancellationError(
+                    `Could not roll back subscription ${serialized._id}`,
+                    error,
+                );
+            }
             throw subscriptionWriteFailed();
         }
 
