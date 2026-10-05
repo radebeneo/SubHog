@@ -3,6 +3,7 @@ import test from 'node:test';
 import mongoose from 'mongoose';
 
 import { createMongoAcceptanceConfig } from '../src/config/integration-acceptance.js';
+import IdentityDeletion from '../src/models/identity-deletion.model.js';
 import Subscription from '../src/models/subscription.model.js';
 import User from '../src/models/user.model.js';
 import { createIdentityService } from '../src/services/identity-service.js';
@@ -14,6 +15,7 @@ const email = (name) => `${name}.${tag}@acceptance.invalid`;
 const subject = (name) => `int01a_${tag}_${name}`;
 const trackedUserIds = new Set();
 const trackedSubscriptionIds = new Set();
+const trackedDeletionSubjects = new Set();
 
 const expectCode = async (promise, code) => {
     await assert.rejects(promise, (error) => {
@@ -40,6 +42,7 @@ const listIndexes = async (collection) => collection.listIndexes().toArray();
 const ensureIndexes = async () => {
     await User.createCollection();
     await Subscription.createCollection();
+    await IdentityDeletion.createCollection();
     await User.collection.createIndex({ email: 1 }, { name: 'email_1', unique: true });
     await User.collection.createIndex(
         { identityProvider: 1, providerSubject: 1 },
@@ -53,14 +56,22 @@ const ensureIndexes = async () => {
         },
     );
     await Subscription.collection.createIndex({ user: 1 }, { name: 'user_1' });
+    await IdentityDeletion.collection.createIndex(
+        { identityProvider: 1, providerSubject: 1 },
+        { name: 'unique_deleted_provider_subject', unique: true },
+    );
 
     const userIndexes = await listIndexes(User.collection);
     const subscriptionIndexes = await listIndexes(Subscription.collection);
+    const deletionIndexes = await listIndexes(IdentityDeletion.collection);
     const emailIndex = userIndexes.find((index) => index.name === 'email_1');
     const associationIndex = userIndexes.find(
         (index) => index.name === 'unique_provider_subject',
     );
     const ownerIndex = subscriptionIndexes.find((index) => index.name === 'user_1');
+    const deletionIndex = deletionIndexes.find(
+        (index) => index.name === 'unique_deleted_provider_subject',
+    );
 
     assert.deepEqual(emailIndex.key, { email: 1 });
     assert.equal(emailIndex.unique, true);
@@ -74,6 +85,11 @@ const ensureIndexes = async () => {
         providerSubject: { $type: 'string' },
     });
     assert.deepEqual(ownerIndex.key, { user: 1 });
+    assert.deepEqual(deletionIndex.key, {
+        identityProvider: 1,
+        providerSubject: 1,
+    });
+    assert.equal(deletionIndex.unique, true);
 };
 
 test('INT-01A MongoDB persistence acceptance', async (t) => {
@@ -159,6 +175,35 @@ test('INT-01A MongoDB persistence acceptance', async (t) => {
                 identityProvider: 'clerk',
                 providerSubject: primaryIdentity.subject,
             }), 1);
+        });
+
+        await t.test('deletion tombstone survives removal of the user document', async () => {
+            const deletedIdentity = {
+                provider: 'clerk',
+                subject: subject('deleted'),
+            };
+            trackedDeletionSubjects.add(deletedIdentity.subject);
+            const provisioned = await createService(
+                'Deleted User',
+                email('deleted'),
+            ).provisionIdentity(deletedIdentity);
+            trackedUserIds.add(provisioned.data.userId);
+
+            await createIdentityService().deleteIdentity(deletedIdentity);
+
+            assert.equal(await User.countDocuments({
+                identityProvider: deletedIdentity.provider,
+                providerSubject: deletedIdentity.subject,
+            }), 0);
+            assert.equal(await IdentityDeletion.countDocuments({
+                identityProvider: deletedIdentity.provider,
+                providerSubject: deletedIdentity.subject,
+            }), 1);
+            await expectCode(
+                createService('Deleted User', email('deleted'))
+                    .provisionIdentity(deletedIdentity),
+                'ACCOUNT_DELETION_IN_PROGRESS',
+            );
         });
 
         await t.test('overlapping first provisioning converges on one user', async () => {
@@ -353,6 +398,12 @@ test('INT-01A MongoDB persistence acceptance', async (t) => {
             }
             if (userIds.length) {
                 await User.collection.deleteMany({ _id: { $in: userIds } });
+            }
+            if (trackedDeletionSubjects.size) {
+                await IdentityDeletion.collection.deleteMany({
+                    identityProvider: 'clerk',
+                    providerSubject: { $in: [...trackedDeletionSubjects] },
+                });
             }
         }
         await mongoose.disconnect();

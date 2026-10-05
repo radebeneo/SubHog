@@ -149,9 +149,21 @@ const findAssociation = (identity) => User.findOne({
     deletionStartedAt: null,
 }).select('_id').lean().exec();
 
-const ownerIsActive = async (associatedUserId) => Boolean(
-    await User.exists({ _id: associatedUserId, deletionStartedAt: null }),
-);
+const reserveSubscriptionCreation = async (associatedUserId) => {
+    const result = await User.updateOne(
+        { _id: associatedUserId, deletionStartedAt: null },
+        { $inc: { activeSubscriptionCreations: 1 } },
+    ).exec();
+    return result.modifiedCount === 1;
+};
+
+const releaseSubscriptionCreation = async (associatedUserId) => {
+    const result = await User.updateOne(
+        { _id: associatedUserId, activeSubscriptionCreations: { $gt: 0 } },
+        { $inc: { activeSubscriptionCreations: -1 } },
+    ).exec();
+    if (result.modifiedCount !== 1) throw subscriptionWriteFailed();
+};
 
 const findSubscriptions = (associatedUserId) => Subscription.find({
     user: associatedUserId,
@@ -179,10 +191,6 @@ const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.fi
 }).select('_id workflowRunId').lean().exec();
 
 const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
-
-const rollbackSubscription = (subscriptionId) => (
-    Subscription.findByIdAndDelete(subscriptionId).select('_id').lean().exec()
-);
 
 const createSubscription = (attributes) => Subscription.create(attributes);
 
@@ -256,14 +264,14 @@ const saveSubscription = async (subscription) => {
 
 export const createOwnedSubscriptionService = ({
     associationLookup = findAssociation,
-    ownerActiveCheck = ownerIsActive,
+    ownerCreationStart = reserveSubscriptionCreation,
+    ownerCreationFinish = releaseSubscriptionCreation,
     subscriptionLookup = findSubscriptions,
     upcomingRenewalsLookup = findUpcomingRenewals,
     itemLookup = findSubscription,
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
     subscriptionCreate = createSubscription,
-    subscriptionRollback = rollbackSubscription,
     reminderScheduling = scheduleReminder,
     reminderTracking = trackReminderWorkflow,
     workflowCancellation = cancelWorkflow,
@@ -271,15 +279,17 @@ export const createOwnedSubscriptionService = ({
     now = () => new Date(),
 } = {}) => {
     const cancelTrackedWorkflow = async (subscription) => {
-        if (!subscription.workflowRunId) return;
+        if (!subscription.workflowRunId) return true;
 
         try {
             await workflowCancellation({ ids: subscription.workflowRunId });
+            return true;
         } catch (error) {
             workflowCancellationError(
                 `Could not cancel reminder workflow ${subscription.workflowRunId}`,
                 error,
             );
+            return false;
         }
     };
 
@@ -339,42 +349,94 @@ export const createOwnedSubscriptionService = ({
             user: associatedUserId,
         };
 
-        let subscription;
+        let reserved;
         try {
-            subscription = await subscriptionCreate(createAttributes);
-        } catch (error) {
-            if (error?.name === 'ValidationError' || error?.name === 'CastError') {
-                throw apiError(400, 'REQUEST_INVALID', 'The subscription request is invalid');
-            }
+            reserved = await ownerCreationStart(associatedUserId);
+        } catch {
             throw subscriptionWriteFailed();
         }
+        if (!reserved) throw subscriptionWriteFailed();
 
-        const serialized = serializeForOwner(subscription, associatedUserId);
-        let scheduledRunId;
-        try {
-            // Account deletion marks the owner before sweeping, so a write that landed
-            // after the sweep must observe the mark here and undo itself.
-            if (!await ownerActiveCheck(associatedUserId)) throw subscriptionWriteFailed();
-            const { workflowRunId } = await reminderScheduling({
-                subscriptionId: serialized._id,
-            });
-            if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
-            scheduledRunId = workflowRunId;
-            await reminderTracking(serialized._id, workflowRunId);
-        } catch {
-            // Avoid leaving a saved subscription behind so a retry cannot duplicate it.
-            await cancelTrackedWorkflow({ workflowRunId: scheduledRunId });
+        const releaseReservation = async () => {
             try {
-                await subscriptionRollback(serialized._id);
+                await ownerCreationFinish(associatedUserId);
             } catch (error) {
                 workflowCancellationError(
-                    `Could not roll back subscription ${serialized._id}`,
+                    `Could not release subscription creation reservation for ${associatedUserId}`,
                     error,
                 );
+                throw subscriptionWriteFailed();
             }
-            throw subscriptionWriteFailed();
+        };
+
+        let serialized;
+        let reservationCanRelease = true;
+        try {
+            let subscription;
+            try {
+                subscription = await subscriptionCreate(createAttributes);
+            } catch (error) {
+                if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+                    throw apiError(400, 'REQUEST_INVALID', 'The subscription request is invalid');
+                }
+                throw subscriptionWriteFailed();
+            }
+
+            serialized = serializeForOwner(subscription, associatedUserId);
+            let scheduledRunId;
+            try {
+                const { workflowRunId } = await reminderScheduling({
+                    subscriptionId: serialized._id,
+                });
+                if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
+                scheduledRunId = workflowRunId;
+                const trackedSubscription = await reminderTracking(
+                    serialized._id,
+                    workflowRunId,
+                );
+                if (!trackedSubscription) throw subscriptionWriteFailed();
+            } catch {
+                const workflowCanceled = await cancelTrackedWorkflow({
+                    workflowRunId: scheduledRunId,
+                });
+                if (workflowCanceled) {
+                    try {
+                        await itemDelete(serialized._id, associatedUserId);
+                    } catch (error) {
+                        workflowCancellationError(
+                            `Could not roll back subscription ${serialized._id}`,
+                            error,
+                        );
+                    }
+                } else if (scheduledRunId) {
+                    let trackedForDeletion = false;
+                    try {
+                        trackedForDeletion = Boolean(await reminderTracking(
+                            serialized._id,
+                            scheduledRunId,
+                        ));
+                    } catch (error) {
+                        workflowCancellationError(
+                            `Could not record reminder workflow ${scheduledRunId} for deletion`,
+                            error,
+                        );
+                    }
+                    if (!trackedForDeletion) {
+                        reservationCanRelease = false;
+                        workflowCancellationError(
+                            `Could not cancel or record reminder workflow ${scheduledRunId}`,
+                            new Error('Reminder workflow cleanup failed'),
+                        );
+                    }
+                }
+                throw subscriptionWriteFailed();
+            }
+        } catch (error) {
+            if (reservationCanRelease) await releaseReservation();
+            throw error;
         }
 
+        if (reservationCanRelease) await releaseReservation();
         return serialized;
     };
 
@@ -481,6 +543,18 @@ export const createOwnedSubscriptionService = ({
         );
         const subscriptionId = itemId(requestedId);
 
+        let subscription;
+        try {
+            subscription = await itemDocumentLookup(subscriptionId, associatedUserId);
+        } catch {
+            throw subscriptionWriteFailed();
+        }
+        if (!subscription) throw subscriptionNotFound();
+
+        if (!await cancelTrackedWorkflow(subscription)) {
+            throw subscriptionWriteFailed();
+        }
+
         let deleted;
         try {
             deleted = await itemDelete(subscriptionId, associatedUserId);
@@ -488,7 +562,6 @@ export const createOwnedSubscriptionService = ({
             throw subscriptionWriteFailed();
         }
         if (!deleted) throw subscriptionNotFound();
-        await cancelTrackedWorkflow(deleted);
     };
 
     return {

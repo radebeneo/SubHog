@@ -224,7 +224,11 @@ const SignIn = () => {
                     <TextInput
                       className="auth-input"
                       value={code}
-                      placeholder="Enter 6-digit code"
+                      placeholder={
+                        mfaStrategy === "backup_code"
+                          ? "Enter backup code"
+                          : "Enter 6-digit code"
+                      }
                       placeholderTextColor="rgba(0, 0, 0, 0.4)"
                       onChangeText={setCode}
                       keyboardType={

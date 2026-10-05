@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 import { workflowClient } from '../config/upstash.js';
+import IdentityDeletion from '../models/identity-deletion.model.js';
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
 import { IdentityApiError, getClerkProfile } from './clerk-profile.js';
@@ -102,10 +103,29 @@ const findReminderWorkflows = (associatedUserId) => Subscription.find({
     user: associatedUserId,
 }).select('workflowRunId').lean().exec();
 
-const markDeletionStarted = (associatedUserId, UserModel) => UserModel.updateOne(
-    { _id: associatedUserId, deletionStartedAt: null },
-    { $set: { deletionStartedAt: new Date() } },
-).exec();
+const identityDeletionQuery = (identity) => ({
+    identityProvider: identity.provider,
+    providerSubject: identity.subject,
+});
+
+const findDeletionRecord = (identity, DeletionModel) => DeletionModel.findOne(
+    identityDeletionQuery(identity),
+).select('_id').lean().exec();
+
+const markDeletionStarted = async (identity, associatedUserId, UserModel, DeletionModel) => {
+    await DeletionModel.updateOne(
+        identityDeletionQuery(identity),
+        { $setOnInsert: identityDeletionQuery(identity) },
+        { upsert: true },
+    ).exec();
+
+    if (associatedUserId) {
+        await UserModel.updateOne(
+            { _id: associatedUserId, deletionStartedAt: null },
+            { $set: { deletionStartedAt: new Date() } },
+        ).exec();
+    }
+};
 
 const deleteSubscriptions = (associatedUserId) => Subscription.deleteMany({
     user: associatedUserId,
@@ -121,13 +141,31 @@ const deleteAssociatedUser = (identity, associatedUserId, UserModel) => (
 
 const cancelWorkflows = (ids) => workflowClient.cancel({ ids });
 
+const waitForSubscriptionCreations = async (associatedUserId, UserModel) => {
+    const timeoutAt = Date.now() + 30_000;
+    while (true) {
+        const user = await UserModel.findById(associatedUserId)
+            .select('activeSubscriptionCreations')
+            .lean()
+            .exec();
+        if (!user || !user.activeSubscriptionCreations) return;
+        if (Date.now() >= timeoutAt) throw new Error('Subscription creation drain timed out');
+        await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+};
+
 export const createIdentityService = ({
     UserModel = User,
+    DeletionModel = IdentityDeletion,
     profileLookup = getClerkProfile,
     createUser = (document) => createAssociatedUser(document, UserModel),
     associationLookup = (identity) => findAssociation(identity, UserModel),
+    deletionRecordLookup = (identity) => findDeletionRecord(identity, DeletionModel),
     reminderWorkflowLookup = findReminderWorkflows,
-    deletionMarker = (userId) => markDeletionStarted(userId, UserModel),
+    deletionMarker = (identity, userId) => (
+        markDeletionStarted(identity, userId, UserModel, DeletionModel)
+    ),
+    creationDrain = (userId) => waitForSubscriptionCreations(userId, UserModel),
     ownedSubscriptionsDelete = deleteSubscriptions,
     associatedUserDelete = (identity, userId) => (
         deleteAssociatedUser(identity, userId, UserModel)
@@ -135,6 +173,14 @@ export const createIdentityService = ({
     workflowCancellation = cancelWorkflows,
     workflowCancellationError = console.error,
 } = {}) => {
+    const identityIsDeleted = async (identity) => {
+        try {
+            return Boolean(await deletionRecordLookup(identity));
+        } catch {
+            throw provisioningFailed();
+        }
+    };
+
     const resolveIdentity = async (identity) => {
         try {
             const user = await UserModel.findOne({
@@ -149,8 +195,9 @@ export const createIdentityService = ({
     };
 
     const provisionIdentity = async (identity) => {
-        let associatedUser;
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
 
+        let associatedUser;
         try {
             associatedUser = await UserModel.findOne({
                 identityProvider: identity.provider,
@@ -160,6 +207,7 @@ export const createIdentityService = ({
             throw provisioningFailed();
         }
 
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
         if (associatedUser?.deletionStartedAt) throw accountDeletionInProgress();
 
         if (associatedUser) {
@@ -175,6 +223,8 @@ export const createIdentityService = ({
             throw provisioningFailed();
         }
 
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
+
         if (emailUser) {
             if (emailUser.deletionStartedAt) throw accountDeletionInProgress();
             if (matchesIdentityAndEmail(emailUser, identity, profile.email)) {
@@ -187,18 +237,42 @@ export const createIdentityService = ({
             classifyExistingEmail(emailUser);
         }
 
+        let createdUser;
         try {
-            const createdUser = await createUser({
+            createdUser = await createUser({
                 ...profile,
                 identityProvider: identity.provider,
                 providerSubject: identity.subject,
             });
-
-            return { created: true, data: serializeProvisionedIdentity(identity, createdUser) };
         } catch (error) {
             if (error?.code !== 11000) {
                 throw provisioningFailed();
             }
+        }
+
+        if (createdUser) {
+            let deletionRecordFound;
+            try {
+                deletionRecordFound = await identityIsDeleted(identity);
+            } catch (error) {
+                try {
+                    await associatedUserDelete(identity, createdUser._id);
+                } catch {
+                    throw provisioningFailed();
+                }
+                throw error;
+            }
+
+            if (deletionRecordFound) {
+                try {
+                    await associatedUserDelete(identity, createdUser._id);
+                } catch {
+                    throw provisioningFailed();
+                }
+                throw accountDeletionInProgress();
+            }
+
+            return { created: true, data: serializeProvisionedIdentity(identity, createdUser) };
         }
 
         let racedAssociation;
@@ -214,6 +288,8 @@ export const createIdentityService = ({
         } catch {
             throw provisioningFailed();
         }
+
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
 
         if (racedAssociation?.deletionStartedAt || racedEmail?.deletionStartedAt) {
             throw accountDeletionInProgress();
@@ -251,13 +327,13 @@ export const createIdentityService = ({
         } catch {
             throw accountDeleteFailed();
         }
-        if (!associatedUser) return;
-
         try {
-            await deletionMarker(associatedUser._id);
+            await deletionMarker(identity, associatedUser?._id);
+            if (associatedUser) await creationDrain(associatedUser._id);
         } catch {
             throw accountDeleteFailed();
         }
+        if (!associatedUser) return;
 
         let subscriptions = [];
         try {
