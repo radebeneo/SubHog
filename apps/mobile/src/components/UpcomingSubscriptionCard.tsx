@@ -1,6 +1,9 @@
 import SubscriptionIcon from "@/components/SubscriptionIcon";
-import { formatCurrency } from "@/features/subscriptions/utils";
-import { Text, View } from "react-native";
+import {
+  formatCurrency,
+  formatRenewalDueLabel,
+} from "@/features/subscriptions/utils";
+import { Pressable, Text, View } from "react-native";
 
 const UpcomingSubscriptionCard = ({
   name,
@@ -8,9 +11,15 @@ const UpcomingSubscriptionCard = ({
   daysLeft,
   icon,
   currency,
-}: UpcomingSubscription) => {
+  onPress,
+}: UpcomingSubscriptionCardProps) => {
   return (
-    <View className="upcoming-card">
+    <Pressable
+      className="upcoming-card"
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${name} subscription`}
+    >
       <View className="upcoming-row">
         <SubscriptionIcon source={icon} size={56} className="upcoming-icon" />
         <View>
@@ -18,7 +27,7 @@ const UpcomingSubscriptionCard = ({
             {formatCurrency(price, currency)}
           </Text>
           <Text className="upcoming-meta" numberOfLines={1}>
-            {daysLeft > 1 ? `${daysLeft} days left` : "Due Today"}
+            {formatRenewalDueLabel(daysLeft)}
           </Text>
         </View>
       </View>
@@ -26,7 +35,7 @@ const UpcomingSubscriptionCard = ({
       <Text className="upcoming-name" numberOfLines={1}>
         {name}
       </Text>
-    </View>
+    </Pressable>
   );
 };
 

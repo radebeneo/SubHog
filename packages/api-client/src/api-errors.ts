@@ -35,6 +35,7 @@ export class ApiError extends Error {
 }
 
 const backendErrorKinds: Record<ApiErrorCode, ApiErrorKind> = {
+  ACCOUNT_DELETE_FAILED: "server",
   AUTH_INVALID: "authentication",
   AUTH_PROVIDER_UNAVAILABLE: "provider",
   IDENTITY_RESOLUTION_FAILED: "server",

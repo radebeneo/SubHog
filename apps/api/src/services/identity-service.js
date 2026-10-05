@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 
+import { workflowClient } from '../config/upstash.js';
+import IdentityDeletion from '../models/identity-deletion.model.js';
+import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
 import { IdentityApiError, getClerkProfile } from './clerk-profile.js';
 
@@ -15,6 +18,18 @@ const provisioningFailed = () => apiError(
     500,
     'PROVISIONING_FAILED',
     'Identity provisioning failed',
+);
+
+const accountDeleteFailed = () => apiError(
+    500,
+    'ACCOUNT_DELETE_FAILED',
+    'The account could not be deleted',
+);
+
+const accountDeletionInProgress = () => apiError(
+    409,
+    'ACCOUNT_DELETION_IN_PROGRESS',
+    'The account is being deleted',
 );
 
 const identityConflict = () => apiError(
@@ -79,11 +94,93 @@ const classifyExistingEmail = (user) => {
     throw identityConflict();
 };
 
+const findAssociation = (identity, UserModel) => UserModel.findOne({
+    identityProvider: identity.provider,
+    providerSubject: identity.subject,
+}).select('_id').lean().exec();
+
+const findReminderWorkflows = (associatedUserId) => Subscription.find({
+    user: associatedUserId,
+}).select('workflowRunId').lean().exec();
+
+const identityDeletionQuery = (identity) => ({
+    identityProvider: identity.provider,
+    providerSubject: identity.subject,
+});
+
+const findDeletionRecord = (identity, DeletionModel) => DeletionModel.findOne(
+    identityDeletionQuery(identity),
+).select('_id').lean().exec();
+
+const markDeletionStarted = async (identity, associatedUserId, UserModel, DeletionModel) => {
+    await DeletionModel.updateOne(
+        identityDeletionQuery(identity),
+        { $setOnInsert: identityDeletionQuery(identity) },
+        { upsert: true },
+    ).exec();
+
+    if (associatedUserId) {
+        await UserModel.updateOne(
+            { _id: associatedUserId, deletionStartedAt: null },
+            { $set: { deletionStartedAt: new Date() } },
+        ).exec();
+    }
+};
+
+const deleteSubscriptions = (associatedUserId) => Subscription.deleteMany({
+    user: associatedUserId,
+}).exec();
+
+const deleteAssociatedUser = (identity, associatedUserId, UserModel) => (
+    UserModel.findOneAndDelete({
+        _id: associatedUserId,
+        identityProvider: identity.provider,
+        providerSubject: identity.subject,
+    }).exec()
+);
+
+const cancelWorkflows = (ids) => workflowClient.cancel({ ids });
+
+const waitForSubscriptionCreations = async (associatedUserId, UserModel) => {
+    const timeoutAt = Date.now() + 30_000;
+    while (true) {
+        const user = await UserModel.findById(associatedUserId)
+            .select('activeSubscriptionCreations')
+            .lean()
+            .exec();
+        if (!user || !user.activeSubscriptionCreations) return;
+        if (Date.now() >= timeoutAt) throw new Error('Subscription creation drain timed out');
+        await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+};
+
 export const createIdentityService = ({
     UserModel = User,
+    DeletionModel = IdentityDeletion,
     profileLookup = getClerkProfile,
     createUser = (document) => createAssociatedUser(document, UserModel),
+    associationLookup = (identity) => findAssociation(identity, UserModel),
+    deletionRecordLookup = (identity) => findDeletionRecord(identity, DeletionModel),
+    reminderWorkflowLookup = findReminderWorkflows,
+    deletionMarker = (identity, userId) => (
+        markDeletionStarted(identity, userId, UserModel, DeletionModel)
+    ),
+    creationDrain = (userId) => waitForSubscriptionCreations(userId, UserModel),
+    ownedSubscriptionsDelete = deleteSubscriptions,
+    associatedUserDelete = (identity, userId) => (
+        deleteAssociatedUser(identity, userId, UserModel)
+    ),
+    workflowCancellation = cancelWorkflows,
+    workflowCancellationError = console.error,
 } = {}) => {
+    const identityIsDeleted = async (identity) => {
+        try {
+            return Boolean(await deletionRecordLookup(identity));
+        } catch {
+            throw provisioningFailed();
+        }
+    };
+
     const resolveIdentity = async (identity) => {
         try {
             const user = await UserModel.findOne({
@@ -98,8 +195,9 @@ export const createIdentityService = ({
     };
 
     const provisionIdentity = async (identity) => {
-        let associatedUser;
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
 
+        let associatedUser;
         try {
             associatedUser = await UserModel.findOne({
                 identityProvider: identity.provider,
@@ -108,6 +206,9 @@ export const createIdentityService = ({
         } catch {
             throw provisioningFailed();
         }
+
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
+        if (associatedUser?.deletionStartedAt) throw accountDeletionInProgress();
 
         if (associatedUser) {
             return { created: false, data: serializeProvisionedIdentity(identity, associatedUser) };
@@ -122,7 +223,10 @@ export const createIdentityService = ({
             throw provisioningFailed();
         }
 
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
+
         if (emailUser) {
+            if (emailUser.deletionStartedAt) throw accountDeletionInProgress();
             if (matchesIdentityAndEmail(emailUser, identity, profile.email)) {
                 return {
                     created: false,
@@ -133,18 +237,42 @@ export const createIdentityService = ({
             classifyExistingEmail(emailUser);
         }
 
+        let createdUser;
         try {
-            const createdUser = await createUser({
+            createdUser = await createUser({
                 ...profile,
                 identityProvider: identity.provider,
                 providerSubject: identity.subject,
             });
-
-            return { created: true, data: serializeProvisionedIdentity(identity, createdUser) };
         } catch (error) {
             if (error?.code !== 11000) {
                 throw provisioningFailed();
             }
+        }
+
+        if (createdUser) {
+            let deletionRecordFound;
+            try {
+                deletionRecordFound = await identityIsDeleted(identity);
+            } catch (error) {
+                try {
+                    await associatedUserDelete(identity, createdUser._id);
+                } catch {
+                    throw provisioningFailed();
+                }
+                throw error;
+            }
+
+            if (deletionRecordFound) {
+                try {
+                    await associatedUserDelete(identity, createdUser._id);
+                } catch {
+                    throw provisioningFailed();
+                }
+                throw accountDeletionInProgress();
+            }
+
+            return { created: true, data: serializeProvisionedIdentity(identity, createdUser) };
         }
 
         let racedAssociation;
@@ -159,6 +287,12 @@ export const createIdentityService = ({
             ]);
         } catch {
             throw provisioningFailed();
+        }
+
+        if (await identityIsDeleted(identity)) throw accountDeletionInProgress();
+
+        if (racedAssociation?.deletionStartedAt || racedEmail?.deletionStartedAt) {
+            throw accountDeletionInProgress();
         }
 
         if (matchesIdentityAndEmail(racedAssociation, identity, profile.email)) {
@@ -186,5 +320,51 @@ export const createIdentityService = ({
         throw provisioningFailed();
     };
 
-    return { resolveIdentity, provisionIdentity };
+    const deleteIdentity = async (identity) => {
+        let associatedUser;
+        try {
+            associatedUser = await associationLookup(identity);
+        } catch {
+            throw accountDeleteFailed();
+        }
+        try {
+            await deletionMarker(identity, associatedUser?._id);
+            if (associatedUser) await creationDrain(associatedUser._id);
+        } catch {
+            throw accountDeleteFailed();
+        }
+        if (!associatedUser) return;
+
+        let subscriptions = [];
+        try {
+            const found = await reminderWorkflowLookup(associatedUser._id);
+            if (Array.isArray(found)) subscriptions = found;
+        } catch (error) {
+            workflowCancellationError('Could not gather account reminder workflows', error);
+            throw accountDeleteFailed();
+        }
+        const workflowIds = [...new Set(
+            subscriptions
+                .map((subscription) => subscription?.workflowRunId)
+                .filter((value) => typeof value === 'string' && value.length > 0),
+        )];
+
+        if (workflowIds.length > 0) {
+            try {
+                await workflowCancellation(workflowIds);
+            } catch (error) {
+                workflowCancellationError('Could not cancel account reminder workflows', error);
+                throw accountDeleteFailed();
+            }
+        }
+
+        try {
+            await ownedSubscriptionsDelete(associatedUser._id);
+            await associatedUserDelete(identity, associatedUser._id);
+        } catch {
+            throw accountDeleteFailed();
+        }
+    };
+
+    return { deleteIdentity, resolveIdentity, provisionIdentity };
 };

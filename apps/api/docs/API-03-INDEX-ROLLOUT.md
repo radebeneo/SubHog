@@ -14,6 +14,16 @@ API-03 requires the `unique_provider_subject` partial index declared by the
 }
 ```
 
+Identity deletion also relies on the `unique_deleted_provider_subject` index
+declared by the `IdentityDeletion` schema:
+
+```js
+{
+  key: { identityProvider: 1, providerSubject: 1 },
+  unique: true
+}
+```
+
 Do not use `syncIndexes()`, drop indexes, or modify user documents as part of
 this rollout.
 
@@ -29,8 +39,19 @@ Before enabling live provisioning:
 4. Confirm the existing unique email index is present and healthy.
 5. Create `unique_provider_subject` explicitly in a maintenance window using
    the definition above.
-6. Inspect the created index and verify duplicate inserts fail in a disposable
-   database before enabling the provisioning route.
+6. Create `unique_deleted_provider_subject` on the `identitydeletions`
+   collection using the definition above.
+7. Inspect both created indexes and verify duplicate inserts fail in a
+   disposable database before enabling the provisioning route.
+
+Deletion records are durable tombstones keyed by provider and subject. They
+must be retained after the corresponding user document is removed; deleting a
+tombstone permits that identity to be provisioned again.
+
+Account deletion marks the user inactive and waits for active subscription
+creation reservations to drain before looking up reminder workflows. Subscription
+creation acquires that reservation atomically only while the user is active and
+releases it after the workflow has been recorded or canceled.
 
 Configure the profile adapter separately from the API-02 verifier:
 

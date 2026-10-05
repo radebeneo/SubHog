@@ -10,6 +10,7 @@ import { isNonNegativeMoneyAmount } from '@subhog/domain';
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
 import { workflowClient } from '../config/upstash.js';
+import { SERVER_URL } from '../config/env.js';
 
 const CURRENCIES = new Set(SUBSCRIPTION_CURRENCIES);
 const FREQUENCIES = new Set(SUBSCRIPTION_FREQUENCIES);
@@ -31,6 +32,13 @@ export const OWNED_SUBSCRIPTION_FIELDS = [
     'createdAt',
     'updatedAt',
 ];
+
+export const SUBSCRIPTION_MUTATION_IDEMPOTENCY = Object.freeze({
+    create: false,
+    update: false,
+    cancel: true,
+    delete: false,
+});
 
 export class SubscriptionApiError extends Error {
     constructor(statusCode, code, message) {
@@ -138,11 +146,34 @@ export const serializeOwnedSubscription = (subscription) => {
 const findAssociation = (identity) => User.findOne({
     identityProvider: identity.provider,
     providerSubject: identity.subject,
+    deletionStartedAt: null,
 }).select('_id').lean().exec();
+
+const reserveSubscriptionCreation = async (associatedUserId) => {
+    const result = await User.updateOne(
+        { _id: associatedUserId, deletionStartedAt: null },
+        { $inc: { activeSubscriptionCreations: 1 } },
+    ).exec();
+    return result.modifiedCount === 1;
+};
+
+const releaseSubscriptionCreation = async (associatedUserId) => {
+    const result = await User.updateOne(
+        { _id: associatedUserId, activeSubscriptionCreations: { $gt: 0 } },
+        { $inc: { activeSubscriptionCreations: -1 } },
+    ).exec();
+    if (result.modifiedCount !== 1) throw subscriptionWriteFailed();
+};
 
 const findSubscriptions = (associatedUserId) => Subscription.find({
     user: associatedUserId,
 }).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).sort({ createdAt: -1, _id: -1 }).lean().exec();
+
+const findUpcomingRenewals = (associatedUserId, now) => Subscription.find({
+    user: associatedUserId,
+    status: 'active',
+    renewalDate: { $gt: now },
+}).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).sort({ renewalDate: 1, _id: 1 }).lean().exec();
 
 const findSubscription = (subscriptionId, associatedUserId) => Subscription.findOne({
     _id: subscriptionId,
@@ -160,6 +191,19 @@ const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.fi
 }).select('_id workflowRunId').lean().exec();
 
 const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
+
+const createSubscription = (attributes) => Subscription.create(attributes);
+
+const scheduleReminder = ({ subscriptionId }) => workflowClient.trigger({
+    url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
+    body: { subscriptionId },
+    headers: { 'content-type': 'application/json' },
+    retries: 0,
+});
+
+const trackReminderWorkflow = (subscriptionId, workflowRunId) => (
+    Subscription.findByIdAndUpdate(subscriptionId, { workflowRunId }).exec()
+);
 
 const resolveAssociatedUserId = async (identity, associationLookup, failure) => {
     let associatedUser;
@@ -220,23 +264,32 @@ const saveSubscription = async (subscription) => {
 
 export const createOwnedSubscriptionService = ({
     associationLookup = findAssociation,
+    ownerCreationStart = reserveSubscriptionCreation,
+    ownerCreationFinish = releaseSubscriptionCreation,
     subscriptionLookup = findSubscriptions,
+    upcomingRenewalsLookup = findUpcomingRenewals,
     itemLookup = findSubscription,
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
+    subscriptionCreate = createSubscription,
+    reminderScheduling = scheduleReminder,
+    reminderTracking = trackReminderWorkflow,
     workflowCancellation = cancelWorkflow,
     workflowCancellationError = console.error,
+    now = () => new Date(),
 } = {}) => {
     const cancelTrackedWorkflow = async (subscription) => {
-        if (!subscription.workflowRunId) return;
+        if (!subscription.workflowRunId) return true;
 
         try {
             await workflowCancellation({ ids: subscription.workflowRunId });
+            return true;
         } catch (error) {
             workflowCancellationError(
                 `Could not cancel reminder workflow ${subscription.workflowRunId}`,
                 error,
             );
+            return false;
         }
     };
 
@@ -273,6 +326,150 @@ export const createOwnedSubscriptionService = ({
         return serialized.sort((left, right) => (
             right.createdAt.localeCompare(left.createdAt)
             || right._id.localeCompare(left._id)
+        ));
+    };
+
+    const createOwnedSubscription = async (identity, attributes) => {
+        const associatedUserId = await resolveAssociatedUserId(
+            identity,
+            associationLookup,
+            subscriptionWriteFailed,
+        );
+        const createAttributes = {
+            name: attributes.name.trim(),
+            price: attributes.price,
+            currency: attributes.currency,
+            frequency: attributes.frequency,
+            category: attributes.category,
+            paymentMethod: attributes.paymentMethod.trim(),
+            startDate: new Date(attributes.startDate),
+            ...(attributes.renewalDate === undefined
+                ? {}
+                : { renewalDate: new Date(attributes.renewalDate) }),
+            user: associatedUserId,
+        };
+
+        let reserved;
+        try {
+            reserved = await ownerCreationStart(associatedUserId);
+        } catch {
+            throw subscriptionWriteFailed();
+        }
+        if (!reserved) throw subscriptionWriteFailed();
+
+        const releaseReservation = async () => {
+            try {
+                await ownerCreationFinish(associatedUserId);
+            } catch (error) {
+                workflowCancellationError(
+                    `Could not release subscription creation reservation for ${associatedUserId}`,
+                    error,
+                );
+                throw subscriptionWriteFailed();
+            }
+        };
+
+        let serialized;
+        let reservationCanRelease = true;
+        try {
+            let subscription;
+            try {
+                subscription = await subscriptionCreate(createAttributes);
+            } catch (error) {
+                if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+                    throw apiError(400, 'REQUEST_INVALID', 'The subscription request is invalid');
+                }
+                throw subscriptionWriteFailed();
+            }
+
+            serialized = serializeForOwner(subscription, associatedUserId);
+            let scheduledRunId;
+            try {
+                const { workflowRunId } = await reminderScheduling({
+                    subscriptionId: serialized._id,
+                });
+                if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
+                scheduledRunId = workflowRunId;
+                const trackedSubscription = await reminderTracking(
+                    serialized._id,
+                    workflowRunId,
+                );
+                if (!trackedSubscription) throw subscriptionWriteFailed();
+            } catch {
+                const workflowCanceled = await cancelTrackedWorkflow({
+                    workflowRunId: scheduledRunId,
+                });
+                if (workflowCanceled) {
+                    try {
+                        await itemDelete(serialized._id, associatedUserId);
+                    } catch (error) {
+                        workflowCancellationError(
+                            `Could not roll back subscription ${serialized._id}`,
+                            error,
+                        );
+                    }
+                } else if (scheduledRunId) {
+                    let trackedForDeletion = false;
+                    try {
+                        trackedForDeletion = Boolean(await reminderTracking(
+                            serialized._id,
+                            scheduledRunId,
+                        ));
+                    } catch (error) {
+                        workflowCancellationError(
+                            `Could not record reminder workflow ${scheduledRunId} for deletion`,
+                            error,
+                        );
+                    }
+                    if (!trackedForDeletion) {
+                        reservationCanRelease = false;
+                        workflowCancellationError(
+                            `Could not cancel or record reminder workflow ${scheduledRunId}`,
+                            new Error('Reminder workflow cleanup failed'),
+                        );
+                    }
+                }
+                throw subscriptionWriteFailed();
+            }
+        } catch (error) {
+            if (reservationCanRelease) await releaseReservation();
+            throw error;
+        }
+
+        if (reservationCanRelease) await releaseReservation();
+        return serialized;
+    };
+
+    const listUpcomingRenewals = async (identity) => {
+        const associatedUserId = await resolveAssociatedUserId(
+            identity,
+            associationLookup,
+            subscriptionsReadFailed,
+        );
+        const currentTime = now();
+
+        let subscriptions;
+        try {
+            subscriptions = await upcomingRenewalsLookup(associatedUserId, currentTime);
+        } catch {
+            throw subscriptionsReadFailed();
+        }
+        if (!Array.isArray(subscriptions)) throw dataIntegrityError();
+
+        const serialized = subscriptions.map((subscription) => (
+            serializeForOwner(subscription, associatedUserId)
+        ));
+        if (serialized.some((subscription) => (
+            subscription.status !== 'active'
+            || subscription.renewalDate === null
+            || new Date(subscription.renewalDate) <= currentTime
+        ))) {
+            throw dataIntegrityError();
+        }
+
+        return serialized.sort((left, right) => (
+            left.renewalDate.localeCompare(right.renewalDate)
+            || left._id.localeCompare(right._id)
         ));
     };
 
@@ -346,6 +543,18 @@ export const createOwnedSubscriptionService = ({
         );
         const subscriptionId = itemId(requestedId);
 
+        let subscription;
+        try {
+            subscription = await itemDocumentLookup(subscriptionId, associatedUserId);
+        } catch {
+            throw subscriptionWriteFailed();
+        }
+        if (!subscription) throw subscriptionNotFound();
+
+        if (!await cancelTrackedWorkflow(subscription)) {
+            throw subscriptionWriteFailed();
+        }
+
         let deleted;
         try {
             deleted = await itemDelete(subscriptionId, associatedUserId);
@@ -353,11 +562,12 @@ export const createOwnedSubscriptionService = ({
             throw subscriptionWriteFailed();
         }
         if (!deleted) throw subscriptionNotFound();
-        await cancelTrackedWorkflow(deleted);
     };
 
     return {
+        createOwnedSubscription,
         listOwnedSubscriptions,
+        listUpcomingRenewals,
         getOwnedSubscription,
         updateOwnedSubscription,
         cancelOwnedSubscription,

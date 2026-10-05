@@ -1,8 +1,6 @@
 import { tabs } from "@/config/data";
 import { colors, components } from "@/config/theme";
-import { SubscriptionProvider } from "@/providers/SubscriptionContext";
-import { useAuth } from "@clerk/expo";
-import { Redirect, Tabs } from "expo-router";
+import { Tabs } from "expo-router";
 import { Image, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -21,23 +19,7 @@ const TabIcon = ({ focused, icon }: TabIconProps) => (
 );
 
 const TabLayout = () => {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  // Wait for auth to load before rendering anything
-  if (!isLoaded) {
-    return null;
-  }
-
-  // Redirect to sign-in if user is not authenticated
-  if (!isSignedIn) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
-
-  return (
-    <SubscriptionProvider>
-      <SubscriptionTabs />
-    </SubscriptionProvider>
-  );
+  return <SubscriptionTabs />;
 };
 
 const SubscriptionTabs = () => {

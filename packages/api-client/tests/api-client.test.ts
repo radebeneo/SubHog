@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type {
+  CreateSubscriptionRequest,
+  UpdateSubscriptionRequest,
+} from "@subhog/contracts";
 import { ApiClient, RequestSessionScope } from "../src/api-client.ts";
 import { ApiError } from "../src/api-errors.ts";
 import {
@@ -45,6 +49,22 @@ function createClient(
     requests,
   };
 }
+
+const createSubscriptionPayload: CreateSubscriptionRequest = {
+  name: "Example Plus",
+  price: 12.5,
+  currency: "USD",
+  frequency: "monthly",
+  category: "entertainment",
+  paymentMethod: "card",
+  startDate: "2026-01-01T00:00:00.000Z",
+  renewalDate: "2026-02-01T00:00:00.000Z",
+};
+
+const updateSubscriptionPayload: UpdateSubscriptionRequest = {
+  name: "Updated Plus",
+  price: 15,
+};
 
 test("uses an injected ordinary Clerk token and centralized URL", async () => {
   const { client, requests } = createClient([successFixture(identityFixture)]);
@@ -94,6 +114,252 @@ test("validates identity, provisioning, and complete subscription list DTOs", as
     await list.client.listSubscriptions(subscriptionFixture.user),
     [subscriptionFixture],
   );
+});
+
+test("uses the subscription detail, create, update, cancel, and upcoming routes", async () => {
+  const updatedSubscription = {
+    ...subscriptionFixture,
+    name: updateSubscriptionPayload.name!,
+    price: updateSubscriptionPayload.price!,
+  };
+  const cancelledSubscription = {
+    ...subscriptionFixture,
+    status: "cancelled" as const,
+  };
+  const { client, requests } = createClient(
+    [
+      successFixture(subscriptionFixture),
+      successFixture(subscriptionFixture),
+      successFixture(updatedSubscription),
+      successFixture(cancelledSubscription),
+      successFixture([subscriptionFixture]),
+    ],
+    ["token", "token", "token", "token", "token"],
+  );
+
+  assert.deepEqual(
+    await client.getSubscription(subscriptionFixture._id),
+    subscriptionFixture,
+  );
+  assert.deepEqual(
+    await client.createSubscription(createSubscriptionPayload),
+    subscriptionFixture,
+  );
+  assert.deepEqual(
+    await client.updateSubscription(
+      subscriptionFixture._id,
+      updateSubscriptionPayload,
+    ),
+    updatedSubscription,
+  );
+  assert.deepEqual(
+    await client.cancelSubscription(subscriptionFixture._id),
+    cancelledSubscription,
+  );
+  assert.deepEqual(await client.listUpcomingRenewals(), [subscriptionFixture]);
+
+  assert.deepEqual(
+    requests.map(({ url, init }) => ({
+      url,
+      method: init.method,
+      body: init.body,
+    })),
+    [
+      {
+        url: `https://api.example.test/api/v1/subscriptions/${subscriptionFixture._id}`,
+        method: "GET",
+        body: undefined,
+      },
+      {
+        url: "https://api.example.test/api/v1/subscriptions",
+        method: "POST",
+        body: JSON.stringify(createSubscriptionPayload),
+      },
+      {
+        url: `https://api.example.test/api/v1/subscriptions/${subscriptionFixture._id}`,
+        method: "PUT",
+        body: JSON.stringify(updateSubscriptionPayload),
+      },
+      {
+        url: `https://api.example.test/api/v1/subscriptions/${subscriptionFixture._id}/cancel`,
+        method: "PUT",
+        body: undefined,
+      },
+      {
+        url: "https://api.example.test/api/v1/subscriptions/upcoming-renewals",
+        method: "GET",
+        body: undefined,
+      },
+    ],
+  );
+  assert.equal(
+    (requests[1].init.headers as Record<string, string>)["Content-Type"],
+    "application/json",
+  );
+  assert.equal(
+    (requests[2].init.headers as Record<string, string>)["Content-Type"],
+    "application/json",
+  );
+});
+
+test("accepts a bodyless 204 delete and rejects a body-bearing success", async () => {
+  const deleted = createClient([new Response(null, { status: 204 })]);
+  assert.equal(
+    await deleted.client.deleteSubscription(subscriptionFixture._id),
+    undefined,
+  );
+  assert.equal(
+    deleted.requests[0].url,
+    `https://api.example.test/api/v1/subscriptions/${subscriptionFixture._id}`,
+  );
+  assert.equal(deleted.requests[0].init.method, "DELETE");
+  assert.equal(deleted.requests[0].init.body, undefined);
+
+  const unexpected = createClient([successFixture(subscriptionFixture)]);
+  await assert.rejects(
+    unexpected.client.deleteSubscription(subscriptionFixture._id),
+    (error: ApiError) => {
+      assert.equal(error.code, "RESPONSE_INVALID");
+      assert.equal(error.kind, "transport");
+      return true;
+    },
+  );
+});
+
+test("validates mutation responses as exact subscription DTOs", async () => {
+  const responseWithServerOnlyField = {
+    ...subscriptionFixture,
+    workflowRunId: "wfr_private",
+  };
+  const create = createClient([successFixture(responseWithServerOnlyField)]);
+  await assert.rejects(
+    create.client.createSubscription(createSubscriptionPayload),
+    (error: ApiError) => {
+      assert.equal(error.code, "RESPONSE_INVALID");
+      assert.equal(error.kind, "transport");
+      return true;
+    },
+  );
+
+  const update = createClient([new Response("not json", { status: 200 })]);
+  await assert.rejects(
+    update.client.updateSubscription(
+      subscriptionFixture._id,
+      updateSubscriptionPayload,
+    ),
+    (error: ApiError) => {
+      assert.equal(error.code, "RESPONSE_INVALID");
+      assert.equal(error.kind, "transport");
+      return true;
+    },
+  );
+
+  const cancel = createClient([
+    successFixture({ ...subscriptionFixture, status: "unknown" }),
+  ]);
+  await assert.rejects(
+    cancel.client.cancelSubscription(subscriptionFixture._id),
+    (error: ApiError) => {
+      assert.equal(error.code, "RESPONSE_INVALID");
+      assert.equal(error.kind, "transport");
+      return true;
+    },
+  );
+});
+
+test("deletes identity without a body and accepts only 204", async () => {
+  const deleted = createClient([new Response(null, { status: 204 })]);
+  assert.equal(await deleted.client.deleteIdentity(), undefined);
+  assert.equal(
+    deleted.requests[0].url,
+    "https://api.example.test/api/v1/identity",
+  );
+  assert.equal(deleted.requests[0].init.method, "DELETE");
+  assert.equal(deleted.requests[0].init.body, undefined);
+
+  const unexpected = createClient([Response.json({ success: true })]);
+  await assert.rejects(unexpected.client.deleteIdentity(), (error: ApiError) => {
+    assert.equal(error.code, "RESPONSE_INVALID");
+    assert.equal(error.kind, "transport");
+    return true;
+  });
+});
+
+test("refreshes subscription reads but never replays subscription mutations", async () => {
+  const detail = createClient(
+    [errorFixture(401, "AUTH_INVALID"), successFixture(subscriptionFixture)],
+    ["stale-token", "fresh-token"],
+  );
+  assert.deepEqual(
+    await detail.client.getSubscription(subscriptionFixture._id),
+    subscriptionFixture,
+  );
+  assert.equal(detail.requests.length, 2);
+
+  const mutations: Array<(client: ApiClient) => Promise<unknown>> = [
+    (client) => client.createSubscription(createSubscriptionPayload),
+    (client) =>
+      client.updateSubscription(
+        subscriptionFixture._id,
+        updateSubscriptionPayload,
+      ),
+    (client) => client.cancelSubscription(subscriptionFixture._id),
+    (client) => client.deleteSubscription(subscriptionFixture._id),
+    (client) => client.deleteIdentity(),
+  ];
+  for (const mutate of mutations) {
+    const attempt = createClient(
+      [errorFixture(401, "AUTH_INVALID")],
+      ["mutation-token", "must-not-be-used"],
+    );
+    await assert.rejects(mutate(attempt.client), (error: ApiError) => {
+      assert.equal(error.code, "AUTH_INVALID");
+      return true;
+    });
+    assert.equal(attempt.requests.length, 1);
+  }
+});
+
+test("exposes ambiguous mutation transport failures without replay", async () => {
+  const { client, requests } = createClient([
+    async () => {
+      throw new Error("connection closed after send");
+    },
+  ]);
+
+  await assert.rejects(
+    client.updateSubscription(
+      subscriptionFixture._id,
+      updateSubscriptionPayload,
+    ),
+    (error: ApiError) => {
+      assert.equal(error.code, "NETWORK_ERROR");
+      assert.equal(error.kind, "transport");
+      assert.equal(error.retryable, true);
+      assert.equal(error.status, 0);
+      assert.doesNotMatch(error.message, /connection closed after send/);
+      return true;
+    },
+  );
+  assert.equal(requests.length, 1);
+});
+
+test("exposes ambiguous identity deletion without replay", async () => {
+  const { client, requests } = createClient([
+    async () => {
+      throw new Error("connection closed after deletion");
+    },
+  ]);
+
+  await assert.rejects(client.deleteIdentity(), (error: ApiError) => {
+    assert.equal(error.code, "NETWORK_ERROR");
+    assert.equal(error.kind, "transport");
+    assert.equal(error.retryable, true);
+    assert.equal(error.status, 0);
+    assert.doesNotMatch(error.message, /connection closed after deletion/);
+    return true;
+  });
+  assert.equal(requests.length, 1);
 });
 
 test("preserves daily and weekly frequencies, nullable renewal dates, and server order", async () => {
@@ -199,6 +465,7 @@ test("bounds repeated 401 recovery to one replay", async () => {
 test("classifies backend errors without treating them as logout", async () => {
   const cases: Array<[number, string, string]> = [
     [500, "IDENTITY_RESOLUTION_FAILED", "server"],
+    [500, "ACCOUNT_DELETE_FAILED", "server"],
     [403, "IDENTITY_NOT_PROVISIONED", "authorization"],
     [409, "IDENTITY_CONFLICT", "conflict"],
     [422, "PROFILE_INCOMPLETE", "validation"],

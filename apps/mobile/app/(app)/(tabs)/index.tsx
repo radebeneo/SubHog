@@ -1,61 +1,64 @@
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionStateView from "@/components/SubscriptionStateView";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import images from "@/config/images";
+import { getUpcomingSubscriptions } from "@/features/subscriptions/utils";
 import { useSubscriptions } from "@/providers/SubscriptionContext";
-import "@/global.css";
-import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
 import { useUser } from "@clerk/expo";
-import dayjs from "dayjs";
+import { router } from "expo-router";
 import { styled } from "nativewind";
-import { useState } from "react";
-import { FlatList, Image, Text, View } from "react-native";
+import { Fragment, useState } from "react";
+import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
-export default function App() {
-  const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
-    string | null
-  >(null);
-  const { state, subscriptions } = useSubscriptions();
+export default function Home() {
+  const [createVisible, setCreateVisible] = useState(false);
+  const { state, subscriptions, createSubscription } = useSubscriptions();
   const { user } = useUser();
   const displayName =
-    user?.firstName || user?.emailAddresses[0]?.emailAddress || "Subscriber";
+    user?.firstName ||
+    user?.emailAddresses[0]?.emailAddress ||
+    "Subscriber";
 
-  if (state.status !== "ready") {
-    return <SubscriptionStateView />;
-  }
+  if (state.status !== "ready") return <SubscriptionStateView />;
 
   const activeSubscriptions = subscriptions.filter(
     (subscription) => subscription.status === "active",
   );
-  const upcomingSubscriptions = activeSubscriptions
-    .filter((subscription) => subscription.renewalDate)
-    .map((subscription) => ({
-      ...subscription,
-      daysLeft: Math.max(0, dayjs(subscription.renewalDate).diff(dayjs(), "day")),
-    }))
-    .sort((first, second) => first.daysLeft - second.daysLeft)
-    .slice(0, 4);
+  const upcomingSubscriptions = getUpcomingSubscriptions(subscriptions).slice(
+    0,
+    4,
+  );
+  const openSubscription = (id: string) =>
+    router.push({ pathname: "/subscriptions/[id]", params: { id } });
 
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
       <FlatList
         ListHeaderComponent={() => (
-          <>
+          <Fragment>
             <View className="home-header">
               <View className="home-user">
                 <Image
                   className="home-avatar"
-                  source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar}
+                  source={
+                    user?.imageUrl ? { uri: user.imageUrl } : images.avatar
+                  }
                 />
                 <Text className="home-user-name">{displayName}</Text>
               </View>
-              <Text className="text-sm font-sans-semibold text-muted-foreground">
-                Read only
-              </Text>
+              <Pressable
+                className="rounded-full bg-primary px-4 py-2"
+                onPress={() => setCreateVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Add subscription"
+              >
+                <Text className="font-sans-bold text-background">Add</Text>
+              </Pressable>
             </View>
 
             <View className="home-balance-card">
@@ -69,12 +72,23 @@ export default function App() {
             </View>
 
             <View className="mb-5">
-              <ListHeading title="Upcoming" />
+              <ListHeading
+                title="Upcoming"
+                onPress={() =>
+                  router.push({
+                    pathname: "/subscriptions",
+                    params: { view: "upcoming" },
+                  })
+                }
+              />
               <FlatList
                 data={upcomingSubscriptions}
                 horizontal
                 renderItem={({ item }) => (
-                  <UpcomingSubscriptionCard {...item} />
+                  <UpcomingSubscriptionCard
+                    {...item}
+                    onPress={() => openSubscription(item.id)}
+                  />
                 )}
                 keyExtractor={(item) => item.id}
                 showsHorizontalScrollIndicator={false}
@@ -86,27 +100,17 @@ export default function App() {
               />
             </View>
 
-            <ListHeading title="All Subscriptions" />
-          </>
+            <ListHeading
+              title="All Subscriptions"
+              onPress={() => router.push("/subscriptions")}
+            />
+          </Fragment>
         )}
         data={subscriptions}
         renderItem={({ item }) => (
           <SubscriptionCard
             {...item}
-            expanded={expandedSubscriptionId === item.id}
-            onPress={() => {
-              const isExpanding = expandedSubscriptionId !== item.id;
-              posthog?.capture(
-                "subscription_details_toggled",
-                sanitizePostHogProperties({
-                  subscription_id: item.id,
-                  is_expanded: isExpanding,
-                  category: item.category,
-                  subscription_status: item.status,
-                }),
-              );
-              setExpandedSubscriptionId(isExpanding ? item.id : null);
-            }}
+            onPress={() => openSubscription(item.id)}
           />
         )}
         keyExtractor={(item) => item.id}
@@ -114,9 +118,13 @@ export default function App() {
         ListEmptyComponent={
           <Text className="home-empty-state">No subscriptions found.</Text>
         }
-        extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}
         contentContainerClassName="pb-20"
+      />
+      <CreateSubscriptionModal
+        visible={createVisible}
+        onClose={() => setCreateVisible(false)}
+        onSubmit={createSubscription}
       />
     </SafeAreaView>
   );

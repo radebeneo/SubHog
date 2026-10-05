@@ -28,6 +28,7 @@ const storedUser = {
     identityProvider: 'clerk',
     providerSubject: 'user_subject',
 };
+const noDeletionRecord = async () => null;
 
 const expectApiError = async (promise, statusCode, code) => {
     await assert.rejects(promise, (error) => {
@@ -446,6 +447,7 @@ test('valid legacy JWTs are rejected on every Clerk-only identity route', async 
     const service = {
         resolveIdentity: async () => { serviceCalls += 1; },
         provisionIdentity: async () => { serviceCalls += 1; },
+        deleteIdentity: async () => { serviceCalls += 1; },
     };
     const verifier = createClerkVerifier({
         jwksUrl: new URL('https://clerk.example.test/.well-known/jwks.json'),
@@ -475,6 +477,10 @@ test('valid legacy JWTs are rejected on every Clerk-only identity route', async 
             fetch(url, { headers: { authorization: `Bearer ${legacyToken}` } }),
             fetch(`${url}/provision`, {
                 method: 'POST',
+                headers: { authorization: `Bearer ${legacyToken}` },
+            }),
+            fetch(url, {
+                method: 'DELETE',
                 headers: { authorization: `Bearer ${legacyToken}` },
             }),
         ];
@@ -582,6 +588,7 @@ test('first provisioning creates only trusted profile and association fields wit
     const queries = [];
     let createdDocument;
     const service = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: {
             findOne: async (query) => {
                 queries.push(query);
@@ -617,6 +624,7 @@ test('idempotent repeat preserves stored profile and performs no profile lookup 
     let profileCalls = 0;
     let writes = 0;
     const service = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: { findOne: async () => storedUser },
         profileLookup: async () => {
             profileCalls += 1;
@@ -647,6 +655,7 @@ test('legacy email and mismatched association conflicts do not write', async () 
         let lookup = 0;
         let writes = 0;
         const service = createIdentityService({
+            deletionRecordLookup: noDeletionRecord,
             UserModel: {
                 findOne: async () => {
                     lookup += 1;
@@ -675,6 +684,7 @@ test('concurrent pre-create observation returns the matching association unchang
     let lookup = 0;
     let writes = 0;
     const service = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: {
             findOne: async () => {
                 lookup += 1;
@@ -700,6 +710,7 @@ test('duplicate-key recovery succeeds only when provider, subject, and email inv
     const duplicate = Object.assign(new Error('duplicate details'), { code: 11000 });
 
     const matchingService = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: {
             findOne: async () => null,
         },
@@ -711,6 +722,7 @@ test('duplicate-key recovery succeeds only when provider, subject, and email inv
     });
     let recoveryLookup = 0;
     matchingService.provisionIdentity = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: {
             findOne: async () => {
                 recoveryLookup += 1;
@@ -731,6 +743,7 @@ test('duplicate-key recovery succeeds only when provider, subject, and email inv
 
     let conflictLookup = 0;
     const conflictingService = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: {
             findOne: async () => {
                 conflictLookup += 1;
@@ -756,11 +769,347 @@ test('duplicate-key recovery succeeds only when provider, subject, and email inv
 
 test('provisioning database failures map to PROVISIONING_FAILED without details', async () => {
     const service = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
         UserModel: { findOne: async () => { throw new Error('database secret'); } },
     });
     await expectApiError(
         service.provisionIdentity(identity),
         500,
         'PROVISIONING_FAILED',
+    );
+});
+
+test('account deletion scopes cleanup to the authenticated association and is idempotent', async () => {
+    const calls = [];
+    let associatedUser = { _id: storedUser._id };
+    const service = createIdentityService({
+        associationLookup: async (receivedIdentity) => {
+            assert.deepEqual(receivedIdentity, identity);
+            return associatedUser;
+        },
+        reminderWorkflowLookup: async (associatedUserId) => {
+            assert.equal(associatedUserId, storedUser._id);
+            return [
+                { workflowRunId: 'workflow-one' },
+                { workflowRunId: 'workflow-one' },
+                { workflowRunId: null },
+                { workflowRunId: 'workflow-two' },
+            ];
+        },
+        deletionMarker: async () => {},
+        creationDrain: async () => {},
+        ownedSubscriptionsDelete: async (associatedUserId) => {
+            calls.push(['subscriptions', associatedUserId]);
+        },
+        associatedUserDelete: async (receivedIdentity, associatedUserId) => {
+            calls.push(['user', receivedIdentity, associatedUserId]);
+            associatedUser = null;
+        },
+        workflowCancellation: async (ids) => {
+            calls.push(['workflows', ids]);
+        },
+    });
+
+    await service.deleteIdentity(identity);
+    await service.deleteIdentity(identity);
+
+    assert.deepEqual(calls, [
+        ['workflows', ['workflow-one', 'workflow-two']],
+        ['subscriptions', storedUser._id],
+        ['user', identity, storedUser._id],
+    ]);
+});
+
+test('account deletion keeps data when workflow lookup or cancellation fails', async () => {
+    const deleted = [];
+    const logged = [];
+    const lookupFailureService = createIdentityService({
+        associationLookup: async () => ({ _id: storedUser._id }),
+        reminderWorkflowLookup: async () => {
+            throw new Error('workflow lookup details');
+        },
+        deletionMarker: async () => {},
+        creationDrain: async () => {},
+        ownedSubscriptionsDelete: async (associatedUserId) => {
+            deleted.push(['subscriptions', associatedUserId]);
+        },
+        associatedUserDelete: async () => {
+            deleted.push(['user']);
+        },
+        workflowCancellationError: (...args) => logged.push(args),
+    });
+
+    await assert.rejects(
+        lookupFailureService.deleteIdentity(identity),
+        { code: 'ACCOUNT_DELETE_FAILED' },
+    );
+    assert.deepEqual(deleted, []);
+    assert.equal(logged.length, 1);
+
+    const cancellationService = createIdentityService({
+        associationLookup: async () => ({ _id: storedUser._id }),
+        reminderWorkflowLookup: async () => [{ workflowRunId: 'workflow-one' }],
+        deletionMarker: async () => {},
+        creationDrain: async () => {},
+        ownedSubscriptionsDelete: async () => deleted.push(['subscriptions']),
+        associatedUserDelete: async () => deleted.push(['user']),
+        workflowCancellation: async () => {
+            throw new Error('provider details');
+        },
+        workflowCancellationError: (...args) => logged.push(args),
+    });
+    await assert.rejects(
+        cancellationService.deleteIdentity(identity),
+        { code: 'ACCOUNT_DELETE_FAILED' },
+    );
+    assert.deepEqual(deleted, []);
+    assert.equal(logged.length, 2);
+});
+
+test('account deletion maps database failures to ACCOUNT_DELETE_FAILED', async () => {
+    const cases = [
+        {
+            associationLookup: async () => {
+                throw new Error('association database details');
+            },
+        },
+        {
+            associationLookup: async () => ({ _id: storedUser._id }),
+            reminderWorkflowLookup: async () => [],
+            deletionMarker: async () => {},
+            creationDrain: async () => {},
+        ownedSubscriptionsDelete: async () => {
+                throw new Error('subscription database details');
+            },
+        },
+        {
+            associationLookup: async () => ({ _id: storedUser._id }),
+            reminderWorkflowLookup: async () => [],
+            deletionMarker: async () => {},
+            creationDrain: async () => {},
+        ownedSubscriptionsDelete: async () => undefined,
+            associatedUserDelete: async () => {
+                throw new Error('user database details');
+            },
+        },
+    ];
+
+    for (const dependencies of cases) {
+        await expectApiError(
+            createIdentityService(dependencies).deleteIdentity(identity),
+            500,
+            'ACCOUNT_DELETE_FAILED',
+        );
+    }
+});
+
+test('DELETE identity is authenticated, bodyless, always registered, and returns 204', async () => {
+    let receivedIdentity;
+    let calls = 0;
+    const service = {
+        deleteIdentity: async (value) => {
+            calls += 1;
+            receivedIdentity = value;
+        },
+    };
+    const app = express();
+    app.use(express.json());
+    app.use(
+        '/api/v1/identity',
+        createIdentityRouter({
+            authorize: createClerkAuthorize(async () => identity),
+            controller: createIdentityController(service),
+            provisioningEnabled: false,
+        }),
+    );
+    app.use(errorMiddleware);
+    const server = app.listen(0);
+    await new Promise((resolve) => server.once('listening', resolve));
+    const url = `http://127.0.0.1:${server.address().port}/api/v1/identity`;
+
+    try {
+        const deleted = await fetch(url, {
+            method: 'DELETE',
+            headers: { authorization: 'Bearer test' },
+        });
+        assert.equal(deleted.status, 204);
+        assert.equal(await deleted.text(), '');
+        assert.deepEqual(receivedIdentity, identity);
+
+        const injected = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                authorization: 'Bearer test',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({ userId: 'other-user' }),
+        });
+        assert.equal(injected.status, 400);
+        assert.equal(calls, 1);
+    } finally {
+        server.close();
+    }
+});
+
+test('account deletion failures use the exact safe API envelope', async () => {
+    const service = createIdentityService({
+        associationLookup: async () => {
+            throw new Error('database secret');
+        },
+    });
+    const { server, url } = await startIdentityServer({ service });
+
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: { authorization: 'Bearer test' },
+        });
+        assert.equal(response.status, 500);
+        assert.deepEqual(await response.json(), {
+            success: false,
+            code: 'ACCOUNT_DELETE_FAILED',
+            message: 'The account could not be deleted',
+        });
+    } finally {
+        server.close();
+    }
+});
+
+test('account deletion marks the owner before sweeping owned data', async () => {
+    const calls = [];
+    const service = createIdentityService({
+        associationLookup: async () => ({ _id: storedUser._id }),
+        reminderWorkflowLookup: async () => [],
+        deletionMarker: async () => calls.push('mark'),
+        creationDrain: async (userId) => {
+            assert.equal(userId, storedUser._id);
+            calls.push('drain');
+        },
+        ownedSubscriptionsDelete: async () => calls.push('subscriptions'),
+        associatedUserDelete: async () => calls.push('user'),
+    });
+
+    await service.deleteIdentity(identity);
+
+    assert.deepEqual(calls, ['mark', 'drain', 'subscriptions', 'user']);
+});
+
+test('account deletion waits for active subscription creations before looking up workflows', async () => {
+    let activeSubscriptionCreations = 1;
+    const calls = [];
+    const service = createIdentityService({
+        UserModel: {
+            findById: (userId) => {
+                assert.equal(userId, storedUser._id);
+                return {
+                    select() { return this; },
+                    lean() { return this; },
+                    exec: async () => ({ activeSubscriptionCreations }),
+                };
+            },
+        },
+        associationLookup: async () => ({ _id: storedUser._id }),
+        deletionMarker: async () => calls.push('mark'),
+        reminderWorkflowLookup: async () => {
+            calls.push('workflows');
+            assert.equal(activeSubscriptionCreations, 0);
+            return [];
+        },
+        ownedSubscriptionsDelete: async () => calls.push('subscriptions'),
+        associatedUserDelete: async () => calls.push('user'),
+    });
+    const releaseCreation = setTimeout(() => {
+        activeSubscriptionCreations = 0;
+    }, 50);
+
+    try {
+        await service.deleteIdentity(identity);
+        assert.deepEqual(calls, ['mark', 'workflows', 'subscriptions', 'user']);
+    } finally {
+        clearTimeout(releaseCreation);
+    }
+});
+
+test('provisioning refuses a user whose deletion is in progress', async () => {
+    const service = createIdentityService({
+        deletionRecordLookup: noDeletionRecord,
+        UserModel: {
+            findOne: async () => ({ ...storedUser, deletionStartedAt: new Date() }),
+        },
+    });
+
+    await assert.rejects(
+        service.provisionIdentity(identity),
+        { code: 'ACCOUNT_DELETION_IN_PROGRESS' },
+    );
+});
+
+test('provisioning refuses an identity with a durable deletion record', async () => {
+    let profileCalls = 0;
+    const service = createIdentityService({
+        deletionRecordLookup: async (receivedIdentity) => {
+            assert.deepEqual(receivedIdentity, identity);
+            return { _id: 'deletion-record' };
+        },
+        profileLookup: async () => {
+            profileCalls += 1;
+        },
+    });
+
+    await expectApiError(
+        service.provisionIdentity(identity),
+        409,
+        'ACCOUNT_DELETION_IN_PROGRESS',
+    );
+    assert.equal(profileCalls, 0);
+});
+
+test('in-flight provisioning removes a newly created user when deletion completes', async () => {
+    let deletionRecorded = false;
+    let userDeleted = false;
+    const service = createIdentityService({
+        deletionRecordLookup: async () => (
+            deletionRecorded ? { _id: 'deletion-record' } : null
+        ),
+        UserModel: { findOne: async () => null },
+        profileLookup: async () => ({ name: storedUser.name, email: storedUser.email }),
+        createUser: async (document) => {
+            deletionRecorded = true;
+            return { ...storedUser, ...document };
+        },
+        associatedUserDelete: async (receivedIdentity, userId) => {
+            assert.deepEqual(receivedIdentity, identity);
+            assert.equal(userId, storedUser._id);
+            userDeleted = true;
+        },
+    });
+
+    await expectApiError(
+        service.provisionIdentity(identity),
+        409,
+        'ACCOUNT_DELETION_IN_PROGRESS',
+    );
+    assert.equal(userDeleted, true);
+});
+
+test('deletion records identities even when no associated user remains', async () => {
+    let recordedIdentity;
+    const service = createIdentityService({
+        associationLookup: async () => null,
+        deletionMarker: async (receivedIdentity, userId) => {
+            recordedIdentity = receivedIdentity;
+            assert.equal(userId, undefined);
+        },
+        deletionRecordLookup: async () => (
+            recordedIdentity ? { _id: 'deletion-record' } : null
+        ),
+    });
+
+    await service.deleteIdentity(identity);
+    assert.deepEqual(recordedIdentity, identity);
+    await expectApiError(
+        service.provisionIdentity(identity),
+        409,
+        'ACCOUNT_DELETION_IN_PROGRESS',
     );
 });

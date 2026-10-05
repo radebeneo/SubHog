@@ -1,4 +1,5 @@
 export declare const API_ERROR_CODES: readonly [
+  "ACCOUNT_DELETE_FAILED",
   "AUTH_INVALID",
   "AUTH_PROVIDER_UNAVAILABLE",
   "IDENTITY_RESOLUTION_FAILED",
@@ -95,6 +96,27 @@ export interface OwnedSubscriptionsParams {
   userId: string;
 }
 
+export declare const SUBSCRIPTION_CREATE_FIELDS: readonly [
+  'name',
+  'price',
+  'currency',
+  'frequency',
+  'category',
+  'paymentMethod',
+  'startDate'
+];
+
+export interface CreateSubscriptionRequest {
+  name: string;
+  price: number;
+  currency: SubscriptionCurrency;
+  frequency: SubscriptionFrequency;
+  category: SubscriptionCategory;
+  paymentMethod: string;
+  startDate: string;
+  renewalDate?: string;
+}
+
 export declare const SUBSCRIPTION_UPDATE_FIELDS: readonly [
   "name",
   "price",
@@ -131,6 +153,9 @@ export declare function isProvisionIdentityRequest(
 export declare function isOwnedSubscriptionsParams(
   value: unknown,
 ): value is OwnedSubscriptionsParams;
+export declare function isCreateSubscriptionRequest(
+  value: unknown,
+): value is CreateSubscriptionRequest;
 export declare function isUpdateSubscriptionRequest(
   value: unknown,
 ): value is UpdateSubscriptionRequest;

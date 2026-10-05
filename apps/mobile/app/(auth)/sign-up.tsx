@@ -88,19 +88,17 @@ const SignUp = () => {
       );
       await signUp.finalize({
         navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
-
-          const url = decorateUrl("/(app)/(tabs)");
+          const destination = session?.currentTask
+            ? "/(auth)/session-task"
+            : "/(app)/(tabs)";
+          const url = decorateUrl(destination);
           if (url.startsWith("http")) {
             // Only use window.location on web platform
             if (typeof window !== "undefined" && window.location) {
               window.location.href = url;
             } else {
               // On native, just use router navigation
-              router.replace("/(app)/(tabs)" as Href);
+              router.replace(destination as Href);
             }
           } else {
             router.replace(url as Href);

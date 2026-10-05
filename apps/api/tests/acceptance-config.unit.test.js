@@ -56,6 +56,7 @@ test('disabled provisioning route is unavailable while identity reads remain reg
     const app = express();
     let identityReads = 0;
     let provisioningWrites = 0;
+    let identityDeletes = 0;
     app.use('/api/v1/identity', createIdentityRouter({
         authorize: (req, res, next) => {
             void req;
@@ -73,6 +74,11 @@ test('disabled provisioning route is unavailable while identity reads remain reg
                 provisioningWrites += 1;
                 res.status(201).json({ success: true });
             },
+            deleteIdentity: (req, res) => {
+                void req;
+                identityDeletes += 1;
+                res.status(204).end();
+            },
         },
         provisioningEnabled: false,
     }));
@@ -84,8 +90,10 @@ test('disabled provisioning route is unavailable while identity reads remain reg
     try {
         assert.equal((await fetch(baseUrl)).status, 200);
         assert.equal((await fetch(`${baseUrl}/provision`, { method: 'POST' })).status, 404);
+        assert.equal((await fetch(baseUrl, { method: 'DELETE' })).status, 204);
         assert.equal(identityReads, 1);
         assert.equal(provisioningWrites, 0);
+        assert.equal(identityDeletes, 1);
     } finally {
         await new Promise((resolve) => server.close(resolve));
     }

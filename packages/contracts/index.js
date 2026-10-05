@@ -1,4 +1,5 @@
 export const API_ERROR_CODES = Object.freeze([
+  "ACCOUNT_DELETE_FAILED",
   "AUTH_INVALID",
   "AUTH_PROVIDER_UNAVAILABLE",
   "IDENTITY_RESOLUTION_FAILED",
@@ -109,6 +110,16 @@ export const SUBSCRIPTION_UPDATE_FIELDS = Object.freeze([
   "renewalDate",
 ]);
 
+export const SUBSCRIPTION_CREATE_FIELDS = Object.freeze([
+  'name',
+  'price',
+  'currency',
+  'frequency',
+  'category',
+  'paymentMethod',
+  'startDate',
+]);
+
 const isSubscriptionUpdateField = (key, value) => {
   switch (key) {
     case "name":
@@ -129,6 +140,22 @@ const isSubscriptionUpdateField = (key, value) => {
     default:
       return false;
   }
+};
+
+export const isCreateSubscriptionRequest = (value) => {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  const allowedKeys = [...SUBSCRIPTION_CREATE_FIELDS, 'renewalDate'];
+  if (!SUBSCRIPTION_CREATE_FIELDS.every((key) => keys.includes(key))
+      || !keys.every((key) => allowedKeys.includes(key))) {
+    return false;
+  }
+  if (!keys.every((key) => isSubscriptionUpdateField(key, value[key]))) {
+    return false;
+  }
+
+  return value.renewalDate === undefined
+    || new Date(value.renewalDate) > new Date(value.startDate);
 };
 
 export const isUpdateSubscriptionRequest = (value) => {

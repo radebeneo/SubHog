@@ -5,7 +5,8 @@ const errorMiddleware = (err, req, res, next) => {
         if (err.type === 'entity.parse.failed') {
             const path = req.originalUrl?.split('?')[0];
             error = new Error(
-                req.method === 'POST' && path === '/api/v1/identity/provision'
+                (req.method === 'POST' && path === '/api/v1/identity/provision')
+                    || (req.method === 'DELETE' && path === '/api/v1/identity')
                     ? 'The request body must be an empty JSON object'
                     : 'The request body must contain valid JSON',
             );

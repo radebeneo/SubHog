@@ -1,38 +1,9 @@
-import Subscription from "../models/subscription.model.js";
-import {workflowClient} from "../config/upstash.js";
-import {SERVER_URL} from "../config/env.js";
 import { createOwnedSubscriptionService } from '../services/owned-subscription-service.js';
 import {
+    isCreateSubscriptionRequest,
     isEmptyMutationRequest,
     isUpdateSubscriptionRequest,
 } from '@subhog/contracts';
-
-export const createSubscription = async (req, res, next) => {
-    try{
-        const subscription = await Subscription.create({
-            ...req.body,
-            user: req.user._id,
-        });
-
-        const {workflowRunId} = await workflowClient.trigger({
-            url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
-            body: {
-                subscriptionId: subscription.id
-            },
-            headers: {
-                'content-type': 'application/json'
-            },
-            retries: 0
-        })
-
-        await Subscription.findByIdAndUpdate(subscription._id, {workflowRunId});
-
-        res.status(201).json({success: true, data: {...subscription.toJSON(), workflowRunId}});
-    } catch(error){
-        next(error);
-    }
-}
-
 
 export const createGetUserSubscriptions = (
     service = createOwnedSubscriptionService(),
@@ -65,6 +36,37 @@ const validateJsonBody = (req, guard, message) => {
     if (hasBody(req) && !req.is('application/json')) throw requestInvalid(message);
     if (!guard(req.body)) throw requestInvalid(message);
 };
+
+export const createCreateSubscription = (
+    service = createOwnedSubscriptionService(),
+) => async (req, res, next) => {
+    try {
+        validateJsonBody(
+            req,
+            isCreateSubscriptionRequest,
+            'The subscription request is invalid',
+        );
+        const data = await service.createOwnedSubscription(req.providerIdentity, req.body);
+        return res.status(201).json({ success: true, data });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const createSubscription = createCreateSubscription();
+
+export const createGetUpcomingRenewals = (
+    service = createOwnedSubscriptionService(),
+) => async (req, res, next) => {
+    try {
+        const data = await service.listUpcomingRenewals(req.providerIdentity);
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const getUpcomingRenewals = createGetUpcomingRenewals();
 
 export const createOwnedSubscriptionController = (
     service = createOwnedSubscriptionService(),

@@ -292,15 +292,20 @@ test('delete uses a compound owner predicate and returns 204 without a body', as
     let deletedBy;
     let deleted = false;
     const cancellations = [];
+    const document = cloneDocument({ workflowRunId: 'wfr_delete-me' });
     const service = createOwnedSubscriptionService({
         associationLookup: async () => ({ _id: ownerId }),
+        itemDocumentLookup: async (id, user) => {
+            assert.deepEqual({ id, user }, { id: subscriptionId, user: ownerId });
+            return document;
+        },
         itemDelete: async (id, user) => {
             deletedBy = { id, user };
             deleted = true;
             return { _id: id, workflowRunId: 'wfr_delete-me' };
         },
         workflowCancellation: async (request) => {
-            assert.equal(deleted, true);
+            assert.equal(deleted, false);
             cancellations.push(request);
         },
     });
@@ -318,6 +323,30 @@ test('delete uses a compound owner predicate and returns 204 without a body', as
     } finally {
         server.close();
     }
+});
+
+test('delete retains a subscription and its workflow ID when cancellation fails', async () => {
+    const document = cloneDocument({ workflowRunId: 'wfr_retry-delete' });
+    let deleted = false;
+    const service = createOwnedSubscriptionService({
+        associationLookup: async () => ({ _id: ownerId }),
+        itemDocumentLookup: async () => document,
+        itemDelete: async () => {
+            deleted = true;
+            return document;
+        },
+        workflowCancellation: async () => {
+            throw new Error('QStash unavailable');
+        },
+        workflowCancellationError: () => {},
+    });
+
+    await assert.rejects(
+        service.deleteOwnedSubscription(identity, subscriptionId),
+        { code: 'SUBSCRIPTION_WRITE_FAILED' },
+    );
+    assert.equal(deleted, false);
+    assert.equal(document.workflowRunId, 'wfr_retry-delete');
 });
 
 test('a workflow cancellation failure does not reopen a cancelled subscription', async () => {

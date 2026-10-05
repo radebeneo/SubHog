@@ -43,6 +43,15 @@ const userSchema = new mongoose.Schema({
             return Boolean(this.identityProvider);
         },
     },
+    // Set when account deletion starts; blocks new owned writes and re-provisioning.
+    deletionStartedAt: {
+        type: Date,
+    },
+    activeSubscriptionCreations: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
 },{ timestamps: true });
 
 userSchema.path('password').validate(function rejectProviderPassword(password) {
@@ -78,6 +87,5 @@ export const serializeUser = (user) => {
 const User = mongoose.model('User', userSchema);
 
 export default User;
-
 
 
