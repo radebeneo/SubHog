@@ -23,14 +23,14 @@ declare global {
     startDate?: string;
     price: number;
     currency?: string;
-    frequency?: "Monthly" | "Yearly";
+    frequency?: "daily" | "weekly" | "monthly" | "yearly";
     billing: string;
     renewalDate?: string | null;
     color?: string;
   }
 
   interface SubscriptionCardProps extends Omit<Subscription, "id"> {
-    expanded: boolean;
+    expanded?: boolean;
     onPress: () => void;
     onCancelPress?: () => void;
     isCancelling?: boolean;
@@ -48,10 +48,14 @@ declare global {
   interface UpcomingSubscriptionCardProps extends Omit<
     UpcomingSubscription,
     "id"
-  > {}
+  > {
+    onPress: () => void;
+  }
 
   interface ListHeadingProps {
     title: string;
+    onPress?: () => void;
+    actionLabel?: string;
   }
 }
 

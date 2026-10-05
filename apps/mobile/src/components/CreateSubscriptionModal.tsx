@@ -1,125 +1,131 @@
 import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
-import { findSubscriptionIcon } from "@/features/subscriptions/subscription-icons";
+import type { SubscriptionActionResult } from "@/features/subscriptions/subscription-controller";
+import {
+  SUBSCRIPTION_CATEGORIES,
+  SUBSCRIPTION_FREQUENCIES,
+  type CreateSubscriptionRequest,
+  type SubscriptionCategory,
+  type SubscriptionFrequency,
+} from "@subhog/contracts";
 import {
   calculateNextRenewalDate,
   isPositiveMoneyAmount,
 } from "@subhog/domain";
-import clsx from "clsx";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-
-const categories = [
-  "Entertainment",
-  "Gaming",
-  "AI Tools",
-  "Developer Tools",
-  "Design",
-  "Productivity",
-  "Cloud",
-  "Music",
-  "Other",
-] as const;
-
-const categoryColors: Record<(typeof categories)[number], string> = {
-  Entertainment: "#f5c542",
-  Gaming: "#f2cc8f",
-  "AI Tools": "#b8d4e3",
-  "Developer Tools": "#e8def8",
-  Design: "#b8e8d0",
-  Productivity: "#f4c7ab",
-  Cloud: "#c7d9f5",
-  Music: "#f0c4d8",
-  Other: "#d8d4c8",
-};
-
-type Frequency = "Monthly" | "Yearly";
 
 interface CreateSubscriptionModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreate: (subscription: Subscription) => void;
+  onSubmit: (
+    payload: CreateSubscriptionRequest,
+  ) => Promise<SubscriptionActionResult>;
+  initialSubscription?: Subscription;
 }
 
-const CreateSubscriptionModal = ({
+const formatOption = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
+
+export default function CreateSubscriptionModal({
+  ...props
+}: CreateSubscriptionModalProps) {
+  return (
+    <SubscriptionModalContent
+      key={`${props.visible}-${props.initialSubscription?.id ?? "new"}`}
+      {...props}
+    />
+  );
+}
+
+function SubscriptionModalContent({
   visible,
   onClose,
-  onCreate,
-}: CreateSubscriptionModalProps) => {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [frequency, setFrequency] = useState<Frequency>("Monthly");
+  onSubmit,
+  initialSubscription,
+}: CreateSubscriptionModalProps) {
+  const [name, setName] = useState(initialSubscription?.name ?? "");
+  const [price, setPrice] = useState(
+    initialSubscription ? String(initialSubscription.price) : "",
+  );
+  const [frequency, setFrequency] =
+    useState<SubscriptionFrequency>(
+      initialSubscription?.frequency ?? "monthly",
+    );
   const [category, setCategory] =
-    useState<(typeof categories)[number]>("Other");
-  const [isResolvingIcon, setIsResolvingIcon] = useState(false);
+    useState<SubscriptionCategory>(
+      (initialSubscription?.category as SubscriptionCategory | undefined) ??
+        "others",
+    );
+  const [paymentMethod, setPaymentMethod] = useState(
+    initialSubscription?.paymentMethod ?? "",
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const numericPrice = Number(price);
   const isValid =
-    name.trim().length > 0 && isPositiveMoneyAmount(numericPrice);
-
-  const resetForm = () => {
-    setName("");
-    setPrice("");
-    setFrequency("Monthly");
-    setCategory("Other");
-    setIsResolvingIcon(false);
-  };
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
+    name.trim().length > 0 &&
+    paymentMethod.trim().length > 0 &&
+    isPositiveMoneyAmount(numericPrice);
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
 
-    setIsResolvingIcon(true);
+    setIsSubmitting(true);
+    setError(null);
+    const startDate = initialSubscription?.startDate
+      ? dayjs(initialSubscription.startDate)
+      : dayjs();
+    const payload: CreateSubscriptionRequest = {
+      name: name.trim(),
+      price: numericPrice,
+      currency: "ZAR",
+      frequency,
+      category,
+      paymentMethod: paymentMethod.trim(),
+      startDate: startDate.toISOString(),
+      renewalDate: calculateNextRenewalDate(startDate.toDate(), frequency),
+    };
+
     try {
-      const startDate = dayjs();
-      const subscription: Subscription = {
-        id: `subscription-${startDate.valueOf()}`,
-        name: name.trim(),
-        price: numericPrice,
-        currency: "ZAR",
-        frequency,
-        billing: frequency,
-        category,
-        status: "active",
-        startDate: startDate.toISOString(),
-        renewalDate: calculateNextRenewalDate(
-          startDate.toDate(),
-          frequency === "Monthly" ? "monthly" : "yearly",
-        ),
-        icon: await findSubscriptionIcon(name),
-        color: categoryColors[category],
-      };
-
-      onCreate(subscription);
+      const result = await onSubmit(payload);
+      if (result.status !== "success") {
+        if (result.status !== "stale") {
+          setError(
+            result.status === "ambiguous"
+              ? "The result could not be confirmed after rechecking your subscriptions. Review the list before trying again."
+              : result.failure.message,
+          );
+        }
+        return;
+      }
 
       posthog?.capture(
-        "subscription_created",
+        initialSubscription
+          ? "subscription_updated"
+          : "subscription_created",
         sanitizePostHogProperties({
-          subscription_name: name.trim(),
-          subscription_price: numericPrice,
-          subscription_frequency: frequency,
-          subscription_category: category,
-          currency: "ZAR",
+          subscription_name: payload.name,
+          subscription_price: payload.price,
+          subscription_frequency: payload.frequency,
+          subscription_category: payload.category,
+          currency: payload.currency,
         }),
       );
-
-      resetForm();
       onClose();
     } finally {
-      setIsResolvingIcon(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -128,7 +134,7 @@ const CreateSubscriptionModal = ({
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
       <KeyboardAvoidingView
         className="modal-overlay"
@@ -136,12 +142,17 @@ const CreateSubscriptionModal = ({
       >
         <View className="modal-container">
           <View className="modal-header">
-            <Text className="modal-title">New Subscription</Text>
+            <Text className="modal-title">
+              {initialSubscription
+                ? "Edit Subscription"
+                : "New Subscription"}
+            </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel="Close subscription form"
               className="modal-close"
-              onPress={handleClose}
+              onPress={onClose}
+              disabled={isSubmitting}
             >
               <Text className="modal-close-text">x</Text>
             </Pressable>
@@ -153,8 +164,7 @@ const CreateSubscriptionModal = ({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View className="auth-field">
-              <Text className="auth-label">Name</Text>
+            <FormField label="Name">
               <TextInput
                 className="auth-input"
                 value={name}
@@ -162,11 +172,12 @@ const CreateSubscriptionModal = ({
                 placeholder="e.g. Netflix"
                 placeholderTextColor="rgba(0, 0, 0, 0.4)"
                 autoCapitalize="words"
+                accessibilityLabel="Subscription name"
+                editable={!isSubmitting}
               />
-            </View>
+            </FormField>
 
-            <View className="auth-field">
-              <Text className="auth-label">Price</Text>
+            <FormField label="Price">
               <TextInput
                 className="auth-input"
                 value={price}
@@ -174,13 +185,26 @@ const CreateSubscriptionModal = ({
                 placeholder="0.00"
                 placeholderTextColor="rgba(0, 0, 0, 0.4)"
                 keyboardType="decimal-pad"
+                accessibilityLabel="Subscription price"
+                editable={!isSubmitting}
               />
-            </View>
+            </FormField>
 
-            <View className="auth-field">
-              <Text className="auth-label">Frequency</Text>
-              <View className="picker-row">
-                {(["Monthly", "Yearly"] as Frequency[]).map((option) => (
+            <FormField label="Payment method">
+              <TextInput
+                className="auth-input"
+                value={paymentMethod}
+                onChangeText={setPaymentMethod}
+                placeholder="e.g. Visa ending 1234"
+                placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                accessibilityLabel="Payment method"
+                editable={!isSubmitting}
+              />
+            </FormField>
+
+            <FormField label="Frequency">
+              <View className="flex-row flex-wrap gap-2">
+                {SUBSCRIPTION_FREQUENCIES.map((option) => (
                   <Pressable
                     key={option}
                     className={clsx(
@@ -188,6 +212,9 @@ const CreateSubscriptionModal = ({
                       frequency === option && "picker-option-active",
                     )}
                     onPress={() => setFrequency(option)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: frequency === option }}
+                    disabled={isSubmitting}
                   >
                     <Text
                       className={clsx(
@@ -195,17 +222,16 @@ const CreateSubscriptionModal = ({
                         frequency === option && "picker-option-text-active",
                       )}
                     >
-                      {option}
+                      {formatOption(option)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
-            </View>
+            </FormField>
 
-            <View className="auth-field">
-              <Text className="auth-label">Category</Text>
+            <FormField label="Category">
               <View className="category-scroll">
-                {categories.map((option) => (
+                {SUBSCRIPTION_CATEGORIES.map((option) => (
                   <Pressable
                     key={option}
                     className={clsx(
@@ -213,6 +239,9 @@ const CreateSubscriptionModal = ({
                       category === option && "category-chip-active",
                     )}
                     onPress={() => setCategory(option)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: category === option }}
+                    disabled={isSubmitting}
                   >
                     <Text
                       className={clsx(
@@ -220,23 +249,29 @@ const CreateSubscriptionModal = ({
                         category === option && "category-chip-text-active",
                       )}
                     >
-                      {option}
+                      {formatOption(option)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
-            </View>
+            </FormField>
 
+            {error && <Text className="auth-error">{error}</Text>}
             <Pressable
               className={clsx(
                 "auth-button",
-                (!isValid || isResolvingIcon) && "auth-button-disabled",
+                (!isValid || isSubmitting) && "auth-button-disabled",
               )}
-              onPress={handleSubmit}
-              disabled={!isValid || isResolvingIcon}
+              onPress={() => void handleSubmit()}
+              disabled={!isValid || isSubmitting}
+              accessibilityRole="button"
             >
               <Text className="auth-button-text">
-                {isResolvingIcon ? "Finding icon..." : "Create Subscription"}
+                {isSubmitting
+                  ? "Saving..."
+                  : initialSubscription
+                    ? "Save Changes"
+                    : "Create Subscription"}
               </Text>
             </Pressable>
           </ScrollView>
@@ -244,6 +279,19 @@ const CreateSubscriptionModal = ({
       </KeyboardAvoidingView>
     </Modal>
   );
-};
+}
 
-export default CreateSubscriptionModal;
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View className="auth-field">
+      <Text className="auth-label">{label}</Text>
+      {children}
+    </View>
+  );
+}

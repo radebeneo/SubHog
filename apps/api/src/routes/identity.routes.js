@@ -12,6 +12,7 @@ export const createIdentityRouter = ({
     const identityRouter = Router();
 
     identityRouter.get('/', authorize, controller.getIdentity);
+    identityRouter.delete('/', authorize, controller.deleteIdentity);
     if (provisioningEnabled) {
         identityRouter.post('/provision', authorize, controller.provisionIdentity);
     }

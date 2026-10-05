@@ -10,6 +10,7 @@ import { isNonNegativeMoneyAmount } from '@subhog/domain';
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
 import { workflowClient } from '../config/upstash.js';
+import { SERVER_URL } from '../config/env.js';
 
 const CURRENCIES = new Set(SUBSCRIPTION_CURRENCIES);
 const FREQUENCIES = new Set(SUBSCRIPTION_FREQUENCIES);
@@ -31,6 +32,13 @@ export const OWNED_SUBSCRIPTION_FIELDS = [
     'createdAt',
     'updatedAt',
 ];
+
+export const SUBSCRIPTION_MUTATION_IDEMPOTENCY = Object.freeze({
+    create: false,
+    update: false,
+    cancel: true,
+    delete: false,
+});
 
 export class SubscriptionApiError extends Error {
     constructor(statusCode, code, message) {
@@ -144,6 +152,12 @@ const findSubscriptions = (associatedUserId) => Subscription.find({
     user: associatedUserId,
 }).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).sort({ createdAt: -1, _id: -1 }).lean().exec();
 
+const findUpcomingRenewals = (associatedUserId, now) => Subscription.find({
+    user: associatedUserId,
+    status: 'active',
+    renewalDate: { $gt: now },
+}).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).sort({ renewalDate: 1, _id: 1 }).lean().exec();
+
 const findSubscription = (subscriptionId, associatedUserId) => Subscription.findOne({
     _id: subscriptionId,
     user: associatedUserId,
@@ -160,6 +174,19 @@ const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.fi
 }).select('_id workflowRunId').lean().exec();
 
 const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
+
+const createSubscription = (attributes) => Subscription.create(attributes);
+
+const scheduleReminder = ({ subscriptionId }) => workflowClient.trigger({
+    url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
+    body: { subscriptionId },
+    headers: { 'content-type': 'application/json' },
+    retries: 0,
+});
+
+const trackReminderWorkflow = (subscriptionId, workflowRunId) => (
+    Subscription.findByIdAndUpdate(subscriptionId, { workflowRunId }).exec()
+);
 
 const resolveAssociatedUserId = async (identity, associationLookup, failure) => {
     let associatedUser;
@@ -221,11 +248,16 @@ const saveSubscription = async (subscription) => {
 export const createOwnedSubscriptionService = ({
     associationLookup = findAssociation,
     subscriptionLookup = findSubscriptions,
+    upcomingRenewalsLookup = findUpcomingRenewals,
     itemLookup = findSubscription,
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
+    subscriptionCreate = createSubscription,
+    reminderScheduling = scheduleReminder,
+    reminderTracking = trackReminderWorkflow,
     workflowCancellation = cancelWorkflow,
     workflowCancellationError = console.error,
+    now = () => new Date(),
 } = {}) => {
     const cancelTrackedWorkflow = async (subscription) => {
         if (!subscription.workflowRunId) return;
@@ -273,6 +305,83 @@ export const createOwnedSubscriptionService = ({
         return serialized.sort((left, right) => (
             right.createdAt.localeCompare(left.createdAt)
             || right._id.localeCompare(left._id)
+        ));
+    };
+
+    const createOwnedSubscription = async (identity, attributes) => {
+        const associatedUserId = await resolveAssociatedUserId(
+            identity,
+            associationLookup,
+            subscriptionWriteFailed,
+        );
+        const createAttributes = {
+            name: attributes.name.trim(),
+            price: attributes.price,
+            currency: attributes.currency,
+            frequency: attributes.frequency,
+            category: attributes.category,
+            paymentMethod: attributes.paymentMethod.trim(),
+            startDate: new Date(attributes.startDate),
+            ...(attributes.renewalDate === undefined
+                ? {}
+                : { renewalDate: new Date(attributes.renewalDate) }),
+            user: associatedUserId,
+        };
+
+        let subscription;
+        try {
+            subscription = await subscriptionCreate(createAttributes);
+        } catch (error) {
+            if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+                throw apiError(400, 'REQUEST_INVALID', 'The subscription request is invalid');
+            }
+            throw subscriptionWriteFailed();
+        }
+
+        const serialized = serializeForOwner(subscription, associatedUserId);
+        try {
+            const { workflowRunId } = await reminderScheduling({
+                subscriptionId: serialized._id,
+            });
+            if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
+            await reminderTracking(serialized._id, workflowRunId);
+        } catch {
+            throw subscriptionWriteFailed();
+        }
+
+        return serialized;
+    };
+
+    const listUpcomingRenewals = async (identity) => {
+        const associatedUserId = await resolveAssociatedUserId(
+            identity,
+            associationLookup,
+            subscriptionsReadFailed,
+        );
+        const currentTime = now();
+
+        let subscriptions;
+        try {
+            subscriptions = await upcomingRenewalsLookup(associatedUserId, currentTime);
+        } catch {
+            throw subscriptionsReadFailed();
+        }
+        if (!Array.isArray(subscriptions)) throw dataIntegrityError();
+
+        const serialized = subscriptions.map((subscription) => (
+            serializeForOwner(subscription, associatedUserId)
+        ));
+        if (serialized.some((subscription) => (
+            subscription.status !== 'active'
+            || subscription.renewalDate === null
+            || new Date(subscription.renewalDate) <= currentTime
+        ))) {
+            throw dataIntegrityError();
+        }
+
+        return serialized.sort((left, right) => (
+            left.renewalDate.localeCompare(right.renewalDate)
+            || left._id.localeCompare(right._id)
         ));
     };
 
@@ -357,7 +466,9 @@ export const createOwnedSubscriptionService = ({
     };
 
     return {
+        createOwnedSubscription,
         listOwnedSubscriptions,
+        listUpcomingRenewals,
         getOwnedSubscription,
         updateOwnedSubscription,
         cancelOwnedSubscription,

@@ -41,6 +41,23 @@ function mockApi(overrides: Partial<SubscriptionApi> = {}) {
       calls.list.push(userId);
       return [{ ...subscriptionFixture, user: userId }];
     },
+    async getSubscription(id) {
+      return { ...subscriptionFixture, _id: id };
+    },
+    async createSubscription(payload) {
+      return {
+        ...subscriptionFixture,
+        ...payload,
+        renewalDate: payload.renewalDate ?? null,
+      };
+    },
+    async updateSubscription(id, payload) {
+      return { ...subscriptionFixture, ...payload, _id: id };
+    },
+    async cancelSubscription(id) {
+      return { ...subscriptionFixture, _id: id, status: "cancelled" };
+    },
+    async deleteSubscription() {},
     ...overrides,
   };
   return { api, calls };
@@ -660,4 +677,149 @@ test("excludes ownership-invalid response data from controller state", async () 
   const state = controller.getState();
   assert.equal(state.status, "error");
   assert.doesNotMatch(JSON.stringify(state), new RegExp(responseOnlyValue));
+});
+
+const createPayload = {
+  name: "Mobile Plus",
+  price: 149,
+  currency: "ZAR",
+  frequency: "monthly",
+  category: "entertainment",
+  paymentMethod: "Visa ending 1234",
+  startDate: "2026-10-02T00:00:00.000Z",
+  renewalDate: "2026-11-02T00:00:00.000Z",
+} as const;
+
+test("reconciles the canonical owned list after a successful create", async () => {
+  const created = {
+    ...subscriptionFixture,
+    ...createPayload,
+    _id: "bbbbbbbbbbbbbbbbbbbbbbbb",
+    user: identityFixture.userId!,
+  };
+  let listCount = 0;
+  const { api } = mockApi({
+    listSubscriptions: async () => {
+      listCount += 1;
+      return listCount === 1
+        ? [subscriptionFixture]
+        : [subscriptionFixture, created];
+    },
+    createSubscription: async () => created,
+  });
+  const controller = new SubscriptionController(api);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: identityFixture.clerkUserId,
+    sessionId: "create-session",
+  });
+  await tick();
+
+  const result = await controller.createSubscription(createPayload);
+  assert.equal(result.status, "success");
+  assert.equal(listCount, 2);
+  const state = controller.getState();
+  assert.equal(state.status, "ready");
+  if (state.status === "ready") {
+    assert.deepEqual(
+      state.subscriptions.map((subscription) => subscription._id),
+      [subscriptionFixture._id, created._id],
+    );
+  }
+});
+
+test("models mutation validation errors without replacing the ready list", async () => {
+  const { api } = mockApi({
+    createSubscription: async () => {
+      throw new ApiError("Payment method is required.", {
+        code: "REQUEST_INVALID",
+        kind: "validation",
+      });
+    },
+  });
+  const controller = new SubscriptionController(api);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: identityFixture.clerkUserId,
+    sessionId: "validation-session",
+  });
+  await tick();
+
+  const result = await controller.createSubscription(createPayload);
+  assert.equal(result.status, "validation-error");
+  assert.equal(controller.getState().status, "ready");
+  assert.equal(controller.getActionState().status, "validation-error");
+});
+
+test("rechecks and confirms an ambiguous delete before reporting success", async () => {
+  let listCount = 0;
+  const { api } = mockApi({
+    listSubscriptions: async () => {
+      listCount += 1;
+      return listCount === 1 ? [subscriptionFixture] : [];
+    },
+    deleteSubscription: async () => {
+      throw transportError("The network request failed.");
+    },
+  });
+  const controller = new SubscriptionController(api);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: identityFixture.clerkUserId,
+    sessionId: "ambiguous-delete-session",
+  });
+  await tick();
+
+  const result = await controller.deleteSubscription(subscriptionFixture._id);
+  assert.equal(result.status, "success");
+  assert.equal(listCount, 2);
+  const state = controller.getState();
+  assert.equal(state.status, "ready");
+  if (state.status === "ready") assert.deepEqual(state.subscriptions, []);
+});
+
+test("does not let a stale create completion alter a replacement session", async () => {
+  const pendingCreate = deferred<typeof subscriptionFixture>();
+  const replacementIdentity = {
+    ...identityFixture,
+    userId: "replacement-api-user",
+  };
+  let identityCount = 0;
+  const { api } = mockApi({
+    getIdentity: async () => {
+      identityCount += 1;
+      return identityCount === 1 ? identityFixture : replacementIdentity;
+    },
+    listSubscriptions: async (userId) => [
+      { ...subscriptionFixture, user: userId },
+    ],
+    createSubscription: async () => pendingCreate.promise,
+  });
+  const controller = new SubscriptionController(api);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: identityFixture.clerkUserId,
+    sessionId: "old-session",
+  });
+  await tick();
+  const mutation = controller.createSubscription(createPayload);
+  controller.updateAuth({
+    status: "signed-in",
+    userId: identityFixture.clerkUserId,
+    sessionId: "replacement-session",
+  });
+  await tick();
+  pendingCreate.resolve(subscriptionFixture);
+
+  const result = await mutation;
+  assert.equal(result.status, "stale");
+  const state = controller.getState();
+  assert.equal(state.status, "ready");
+  if (state.status === "ready") {
+    assert.equal(state.identity.userId, replacementIdentity.userId);
+    assert.deepEqual(
+      state.subscriptions.map((subscription) => subscription.user),
+      [replacementIdentity.userId],
+    );
+  }
 });

@@ -10,10 +10,16 @@
     "src/config/api-config.ts",
     "src/adapters/posthog-config.ts",
     "src/adapters/posthog-config.test.ts",
+    "src/features/account/account-deletion.ts",
+    "src/features/account/account-deletion.test.ts",
+    "src/features/auth/auth-state.ts",
+    "src/features/auth/auth-state.test.ts",
     "src/features/profile/profile-name.ts",
     "src/features/profile/profile-name.test.ts",
     "src/features/subscriptions/subscription-controller.ts",
     "src/features/subscriptions/subscription-controller.test.ts",
+    "src/features/subscriptions/utils.ts",
+    "src/features/subscriptions/utils.test.ts",
     "src/types/test-globals.d.ts"
   ]
 }

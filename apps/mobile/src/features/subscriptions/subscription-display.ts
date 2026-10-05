@@ -19,6 +19,7 @@ export function toDisplaySubscription(dto: SubscriptionDto): Subscription {
     startDate: dto.startDate,
     price: dto.price,
     currency: dto.currency,
+    frequency: dto.frequency,
     billing: frequencyLabels[dto.frequency],
     renewalDate: dto.renewalDate,
   };

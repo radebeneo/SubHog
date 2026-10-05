@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [],
+  "files": [
+    "app/(auth)/_layout.tsx",
+    "app/(auth)/sign-in.tsx",
+    "app/(auth)/sign-up.tsx",
+    "app/(auth)/reset-password.tsx",
+    "app/(auth)/session-task.tsx",
+    "app/(app)/(tabs)/settings.tsx",
+    "src/features/auth/auth-state.ts",
+    "image.d.ts",
+    "nativewind-env.d.ts",
+    "type.d.ts"
+  ]
+}

@@ -3,10 +3,13 @@ import {
   isApiSuccessEnvelope,
   isIdentityDto,
   isProvisionedIdentityDto,
+  isSubscriptionDto,
   isSubscriptionDtoList,
+  type CreateSubscriptionRequest,
   type IdentityDto,
   type ProvisionedIdentityDto,
   type SubscriptionDto,
+  type UpdateSubscriptionRequest,
 } from "@subhog/contracts";
 import {
   ApiError,
@@ -58,6 +61,14 @@ export interface RequestOptions {
   scope?: RequestScope;
 }
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 function parseBackendError(value: unknown, status: number): ApiError {
   if (isApiErrorEnvelope(value)) {
     return classifyBackendError(value.code, value.message, status);
@@ -95,6 +106,10 @@ export class ApiClient {
     );
   }
 
+  deleteIdentity(options?: RequestOptions): Promise<void> {
+    return this.request("/identity", { ...options, method: "DELETE" });
+  }
+
   provisionIdentity(options?: RequestOptions): Promise<ProvisionedIdentityDto> {
     return this.request<ProvisionedIdentityDto>(
       "/identity/provision",
@@ -114,14 +129,74 @@ export class ApiClient {
     );
   }
 
-  private async request<T>(
+  getSubscription(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<SubscriptionDto> {
+    return this.request<SubscriptionDto>(
+      `/subscriptions/${encodeURIComponent(id)}`,
+      { ...options, read: true },
+      isSubscriptionDto,
+    );
+  }
+
+  createSubscription(
+    payload: CreateSubscriptionRequest,
+    options?: RequestOptions,
+  ): Promise<SubscriptionDto> {
+    return this.request<SubscriptionDto>(
+      "/subscriptions",
+      { ...options, method: "POST", body: { ...payload } },
+      isSubscriptionDto,
+    );
+  }
+
+  updateSubscription(
+    id: string,
+    payload: UpdateSubscriptionRequest,
+    options?: RequestOptions,
+  ): Promise<SubscriptionDto> {
+    return this.request<SubscriptionDto>(
+      `/subscriptions/${encodeURIComponent(id)}`,
+      { ...options, method: "PUT", body: { ...payload } },
+      isSubscriptionDto,
+    );
+  }
+
+  cancelSubscription(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<SubscriptionDto> {
+    return this.request<SubscriptionDto>(
+      `/subscriptions/${encodeURIComponent(id)}/cancel`,
+      { ...options, method: "PUT" },
+      isSubscriptionDto,
+    );
+  }
+
+  deleteSubscription(id: string, options?: RequestOptions): Promise<void> {
+    return this.request(
+      `/subscriptions/${encodeURIComponent(id)}`,
+      { ...options, method: "DELETE" },
+    );
+  }
+
+  listUpcomingRenewals(options?: RequestOptions): Promise<SubscriptionDto[]> {
+    return this.request<SubscriptionDto[]>(
+      "/subscriptions/upcoming-renewals",
+      { ...options, read: true },
+      isSubscriptionDtoList,
+    );
+  }
+
+  private async request<T = void>(
     path: string,
     options: RequestOptions & {
       method?: string;
       read?: boolean;
-      body?: Record<string, never>;
+      body?: JsonValue;
     },
-    isData: (data: unknown) => data is T,
+    isData?: (data: unknown) => data is T,
   ): Promise<T> {
     this.assertCanRetry(options);
     const token = await this.acquireToken({}, options);
@@ -194,7 +269,7 @@ export class ApiClient {
     token: string,
     options: RequestOptions & {
       method?: string;
-      body?: Record<string, never>;
+      body?: JsonValue;
     },
   ): Promise<{ response?: Response; error?: ApiError }> {
     const controller = new AbortController();
@@ -207,9 +282,12 @@ export class ApiClient {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
-          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.body !== undefined
+            ? { "Content-Type": "application/json" }
+            : {}),
         },
-        body: options.body ? JSON.stringify(options.body) : undefined,
+        body:
+          options.body !== undefined ? JSON.stringify(options.body) : undefined,
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -301,12 +379,25 @@ export class ApiClient {
 
   private async finishResponse<T>(
     result: { response?: Response; error?: ApiError },
-    isData: (data: unknown) => data is T,
+    isData?: (data: unknown) => data is T,
   ): Promise<T> {
     if (result.error) throw result.error;
     const response = result.response;
     if (!response)
       throw transportError("The request did not return a response.");
+    if (response.status === 204) {
+      if (!isData) return undefined as T;
+      throw transportError(
+        "The API returned an unexpected response shape.",
+        "RESPONSE_INVALID",
+      );
+    }
+    if (!isData) {
+      throw transportError(
+        "The API returned an unexpected response shape.",
+        "RESPONSE_INVALID",
+      );
+    }
     let payload: unknown;
     try {
       payload = await response.json();

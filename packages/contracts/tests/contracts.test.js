@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   API_ERROR_CODES,
   isApiSuccessEnvelope,
+  isCreateSubscriptionRequest,
   isIdentityDto,
   isSubscriptionDto,
   isSubscriptionDtoList,
@@ -39,6 +40,43 @@ test("pins the deployed v1 subscription enums", () => {
   ]);
   assert.deepEqual(SUBSCRIPTION_STATUSES, ["active", "cancelled", "expired"]);
   assert.ok(API_ERROR_CODES.includes("SUBSCRIPTION_NOT_FOUND"));
+  assert.ok(API_ERROR_CODES.includes("ACCOUNT_DELETE_FAILED"));
+});
+
+test("subscription creation requires exactly the validated client fields", () => {
+  const request = {
+    name: " Example Plus ",
+    price: 0,
+    currency: "USD",
+    frequency: "monthly",
+    category: "entertainment",
+    paymentMethod: " card ",
+    startDate: "2026-01-01T00:00:00.000Z",
+  };
+
+  assert.equal(isCreateSubscriptionRequest(request), true);
+  assert.equal(isCreateSubscriptionRequest({
+    ...request,
+    renewalDate: "2026-02-01T00:00:00.000Z",
+  }), true);
+
+  const { paymentMethod, ...missingRequired } = request;
+  assert.equal(paymentMethod, " card ");
+
+  for (const value of [
+    {},
+    missingRequired,
+    { ...request, name: " x " },
+    { ...request, paymentMethod: "   " },
+    { ...request, currency: "EUR" },
+    { ...request, startDate: "2026-01-01" },
+    { ...request, user: ownerId },
+    { ...request, status: "active" },
+    { ...request, workflowRunId: "private" },
+    { ...request, renewalDate: "2025-12-31T00:00:00.000Z" },
+  ]) {
+    assert.equal(isCreateSubscriptionRequest(value), false);
+  }
 });
 
 test("pins the complete-list array envelope and exact UTC ISO DTO", () => {

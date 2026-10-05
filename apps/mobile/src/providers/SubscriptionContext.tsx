@@ -4,10 +4,16 @@ import {
   configurationFailure,
   SubscriptionController,
   type AuthSnapshot,
+  type SubscriptionActionResult,
+  type SubscriptionActionState,
   type SubscriptionState,
 } from "@/features/subscriptions/subscription-controller";
 import { toDisplaySubscription } from "@/features/subscriptions/subscription-display";
 import { useAuth } from "@clerk/expo";
+import type {
+  CreateSubscriptionRequest,
+  UpdateSubscriptionRequest,
+} from "@subhog/contracts";
 import {
   createContext,
   useContext,
@@ -19,14 +25,27 @@ import {
 
 interface SubscriptionContextValue {
   state: SubscriptionState;
+  actionState: SubscriptionActionState;
   subscriptions: Subscription[];
   provision: () => Promise<void>;
   retry: () => Promise<void>;
+  clearAction: () => void;
+  getSubscription: (id: string) => Promise<SubscriptionActionResult>;
+  createSubscription: (
+    payload: CreateSubscriptionRequest,
+  ) => Promise<SubscriptionActionResult>;
+  updateSubscription: (
+    id: string,
+    payload: UpdateSubscriptionRequest,
+  ) => Promise<SubscriptionActionResult>;
+  cancelSubscription: (id: string) => Promise<SubscriptionActionResult>;
+  deleteSubscription: (id: string) => Promise<SubscriptionActionResult>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 const noopSubscribe = () => () => undefined;
 const noopAction = async () => undefined;
+const idleActionState: SubscriptionActionState = { status: "idle" };
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { getToken, isLoaded, isSignedIn, sessionId, userId } = useAuth();
@@ -52,6 +71,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     setup.controller?.subscribe ?? noopSubscribe,
     setup.controller?.getState ?? (() => setup.error!),
     setup.controller?.getState ?? (() => setup.error!),
+  );
+  const actionState = useSyncExternalStore(
+    setup.controller?.subscribe ?? noopSubscribe,
+    setup.controller?.getActionState ?? (() => idleActionState),
+    setup.controller?.getActionState ?? (() => idleActionState),
   );
 
   useEffect(() => {
@@ -96,14 +120,29 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     <SubscriptionContext.Provider
       value={{
         state,
+        actionState,
         subscriptions,
         provision: setup.controller?.provision ?? noopAction,
         retry: setup.controller?.retry ?? noopAction,
+        clearAction: setup.controller?.clearAction ?? (() => undefined),
+        getSubscription: setup.controller?.getSubscription ?? unavailableAction,
+        createSubscription:
+          setup.controller?.createSubscription ?? unavailableAction,
+        updateSubscription:
+          setup.controller?.updateSubscription ?? unavailableAction,
+        cancelSubscription:
+          setup.controller?.cancelSubscription ?? unavailableAction,
+        deleteSubscription:
+          setup.controller?.deleteSubscription ?? unavailableAction,
       }}
     >
       {children}
     </SubscriptionContext.Provider>
   );
+}
+
+async function unavailableAction(): Promise<SubscriptionActionResult> {
+  return { status: "stale", operation: "get" };
 }
 
 export function useSubscriptions(): SubscriptionContextValue {

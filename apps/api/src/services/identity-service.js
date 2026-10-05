@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+import { workflowClient } from '../config/upstash.js';
+import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
 import { IdentityApiError, getClerkProfile } from './clerk-profile.js';
 
@@ -15,6 +17,12 @@ const provisioningFailed = () => apiError(
     500,
     'PROVISIONING_FAILED',
     'Identity provisioning failed',
+);
+
+const accountDeleteFailed = () => apiError(
+    500,
+    'ACCOUNT_DELETE_FAILED',
+    'The account could not be deleted',
 );
 
 const identityConflict = () => apiError(
@@ -79,10 +87,41 @@ const classifyExistingEmail = (user) => {
     throw identityConflict();
 };
 
+const findAssociation = (identity, UserModel) => UserModel.findOne({
+    identityProvider: identity.provider,
+    providerSubject: identity.subject,
+}).select('_id').lean().exec();
+
+const findReminderWorkflows = (associatedUserId) => Subscription.find({
+    user: associatedUserId,
+}).select('workflowRunId').lean().exec();
+
+const deleteSubscriptions = (associatedUserId) => Subscription.deleteMany({
+    user: associatedUserId,
+}).exec();
+
+const deleteAssociatedUser = (identity, associatedUserId, UserModel) => (
+    UserModel.findOneAndDelete({
+        _id: associatedUserId,
+        identityProvider: identity.provider,
+        providerSubject: identity.subject,
+    }).exec()
+);
+
+const cancelWorkflows = (ids) => workflowClient.cancel({ ids });
+
 export const createIdentityService = ({
     UserModel = User,
     profileLookup = getClerkProfile,
     createUser = (document) => createAssociatedUser(document, UserModel),
+    associationLookup = (identity) => findAssociation(identity, UserModel),
+    reminderWorkflowLookup = findReminderWorkflows,
+    ownedSubscriptionsDelete = deleteSubscriptions,
+    associatedUserDelete = (identity, userId) => (
+        deleteAssociatedUser(identity, userId, UserModel)
+    ),
+    workflowCancellation = cancelWorkflows,
+    workflowCancellationError = console.error,
 } = {}) => {
     const resolveIdentity = async (identity) => {
         try {
@@ -186,5 +225,43 @@ export const createIdentityService = ({
         throw provisioningFailed();
     };
 
-    return { resolveIdentity, provisionIdentity };
+    const deleteIdentity = async (identity) => {
+        let associatedUser;
+        try {
+            associatedUser = await associationLookup(identity);
+        } catch {
+            throw accountDeleteFailed();
+        }
+        if (!associatedUser) return;
+
+        let subscriptions = [];
+        try {
+            const found = await reminderWorkflowLookup(associatedUser._id);
+            if (Array.isArray(found)) subscriptions = found;
+        } catch (error) {
+            workflowCancellationError('Could not gather account reminder workflows', error);
+        }
+        const workflowIds = [...new Set(
+            subscriptions
+                .map((subscription) => subscription?.workflowRunId)
+                .filter((value) => typeof value === 'string' && value.length > 0),
+        )];
+
+        if (workflowIds.length > 0) {
+            try {
+                await workflowCancellation(workflowIds);
+            } catch (error) {
+                workflowCancellationError('Could not cancel account reminder workflows', error);
+            }
+        }
+
+        try {
+            await ownedSubscriptionsDelete(associatedUser._id);
+            await associatedUserDelete(identity, associatedUser._id);
+        } catch {
+            throw accountDeleteFailed();
+        }
+    };
+
+    return { deleteIdentity, resolveIdentity, provisionIdentity };
 };

@@ -1,4 +1,4 @@
-import { isProvisionIdentityRequest } from '@subhog/contracts';
+import { isEmptyMutationRequest, isProvisionIdentityRequest } from '@subhog/contracts';
 import { IdentityApiError } from '../services/clerk-profile.js';
 import { createIdentityService } from '../services/identity-service.js';
 
@@ -40,8 +40,23 @@ export const createIdentityController = (service = createIdentityService()) => (
             return next(error);
         }
     },
+
+    deleteIdentity: async (req, res, next) => {
+        const hasBody = Number(req.headers['content-length'] || 0) > 0
+            || Boolean(req.headers['transfer-encoding']);
+        if ((hasBody && !req.is('application/json')) || !isEmptyMutationRequest(req.body)) {
+            return next(requestInvalid());
+        }
+
+        try {
+            await service.deleteIdentity(req.providerIdentity);
+            return res.status(204).end();
+        } catch (error) {
+            return next(error);
+        }
+    },
 });
 
 const identityController = createIdentityController();
 
-export const { getIdentity, provisionIdentity } = identityController;
+export const { deleteIdentity, getIdentity, provisionIdentity } = identityController;

@@ -23,7 +23,7 @@ export const formatCurrency = (value: number | string, currency: string = "ZAR")
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(numericValue);
-  } catch (error) {
+  } catch {
     // Fallback in case of an error (e.g., unsupported currency code or invalid number)
     let safeValue = 0;
     if (typeof value === "number" && !isNaN(value)) {
@@ -50,3 +50,59 @@ export const formatStatusLabel = (value?: string): string => {
   if (!value) return "Unknown";
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
+
+export const getRenewalDays = (
+  renewalDate: string,
+  now: string | Date = new Date(),
+): number =>
+  dayjs(renewalDate).startOf("day").diff(dayjs(now).startOf("day"), "day");
+
+export const formatRenewalDueLabel = (days: number): string => {
+  if (days < 0) {
+    const overdueDays = Math.abs(days);
+    return `Overdue by ${overdueDays} ${overdueDays === 1 ? "day" : "days"}`;
+  }
+  if (days === 0) return "Due Today";
+  if (days === 1) return "Due Tomorrow";
+  return `${days} days left`;
+};
+
+interface RenewalSubscription<TIcon> {
+  id: string;
+  icon: TIcon;
+  name: string;
+  price: number;
+  currency?: string;
+  status?: string;
+  renewalDate?: string | null;
+}
+
+interface UpcomingRenewal<TIcon> {
+  id: string;
+  icon: TIcon;
+  name: string;
+  price: number;
+  currency?: string;
+  daysLeft: number;
+}
+
+export const getUpcomingSubscriptions = <TIcon>(
+  subscriptions: RenewalSubscription<TIcon>[],
+  now: string | Date = new Date(),
+): UpcomingRenewal<TIcon>[] =>
+  subscriptions
+    .filter(
+      (subscription) =>
+        subscription.status === "active" &&
+        Boolean(subscription.renewalDate) &&
+        dayjs(subscription.renewalDate).isValid(),
+    )
+    .map((subscription) => ({
+      id: subscription.id,
+      icon: subscription.icon,
+      name: subscription.name,
+      price: subscription.price,
+      currency: subscription.currency,
+      daysLeft: getRenewalDays(subscription.renewalDate!, now),
+    }))
+    .sort((first, second) => first.daysLeft - second.daysLeft);

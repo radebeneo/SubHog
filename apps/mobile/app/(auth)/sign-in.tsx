@@ -1,5 +1,11 @@
 import images from "@/config/images";
 import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
+import {
+  getAuthErrorMessage,
+  getMfaStrategyLabel,
+  getSupportedMfaStrategies,
+  type SupportedMfaStrategy,
+} from "@/features/auth/auth-state";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -25,6 +31,9 @@ const SignIn = () => {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [mfaStrategy, setMfaStrategy] =
+    useState<SupportedMfaStrategy | null>(null);
+  const [flowMessage, setFlowMessage] = useState<string | null>(null);
 
   // Validation states
   const [emailTouched, setEmailTouched] = useState(false);
@@ -38,105 +47,140 @@ const SignIn = () => {
   const formValid =
     emailAddress.length > 0 && password.length > 0 && emailValid;
 
+  const finalizeSignIn = async (requiredVerification: boolean) => {
+    posthog?.capture(
+      "user_signed_in",
+      sanitizePostHogProperties({
+        auth_method: "password",
+        required_verification: requiredVerification,
+      }),
+    );
+    const result = await signIn.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        const destination = session?.currentTask
+          ? "/(auth)/session-task"
+          : "/(app)/(tabs)";
+        const url = decorateUrl(destination);
+        if (url.startsWith("http")) {
+          if (typeof window !== "undefined" && window.location) {
+            window.location.href = url;
+          } else {
+            router.replace(destination as Href);
+          }
+        } else {
+          router.replace(url as Href);
+        }
+      },
+    });
+    if (result.error) {
+      setFlowMessage(getAuthErrorMessage(result.error));
+    }
+  };
+
+  const prepareMfa = async (strategy: SupportedMfaStrategy) => {
+    setFlowMessage(null);
+    setCode("");
+    setMfaStrategy(strategy);
+
+    try {
+      const result =
+        strategy === "email_code"
+          ? await signIn.mfa.sendEmailCode()
+          : strategy === "phone_code"
+            ? await signIn.mfa.sendPhoneCode()
+            : null;
+      if (result?.error) {
+        setFlowMessage(getAuthErrorMessage(result.error));
+      }
+    } catch (error) {
+      posthog?.captureException(error, { auth_flow: "mfa_prepare" });
+      setFlowMessage(getAuthErrorMessage(error));
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formValid) return;
+    setFlowMessage(null);
 
-    const { error } = await signIn.password({
-      emailAddress,
-      password,
-    });
-
-    if (error) {
-      posthog?.captureException(error, { auth_flow: "sign_in" });
-      console.error(JSON.stringify(error, null, 2));
-      return;
-    }
-
-    if (signIn.status === "complete") {
-      posthog?.capture(
-        "user_signed_in",
-        sanitizePostHogProperties({
-          auth_method: "password",
-          required_verification: false,
-        }),
-      );
-      await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
-
-          const url = decorateUrl("/(app)/(tabs)");
-          if (url.startsWith("http")) {
-            // Only use window.location on web platform
-            if (typeof window !== "undefined" && window.location) {
-              window.location.href = url;
-            } else {
-              // On native, just use router navigation
-              router.replace("/(app)/(tabs)" as Href);
-            }
-          } else {
-            router.replace(url as Href);
-          }
-        },
+    try {
+      const { error } = await signIn.password({
+        emailAddress,
+        password,
       });
-    } else if (signIn.status === "needs_second_factor") {
-      // Handle MFA if needed (not implemented in this basic flow)
-      console.log("MFA required");
-    } else if (signIn.status === "needs_client_trust") {
-      // Send email code for client trust verification
-      const emailCodeFactor = signIn.supportedSecondFactors.find(
-        (factor) => factor.strategy === "email_code",
-      );
 
-      if (emailCodeFactor) {
-        await signIn.mfa.sendEmailCode();
+      if (error) {
+        posthog?.captureException(error, { auth_flow: "sign_in" });
+        setFlowMessage(getAuthErrorMessage(error));
+        return;
       }
-    } else {
-      console.error("Sign-in attempt not complete:", signIn);
+
+      if (signIn.status === "complete") {
+        await finalizeSignIn(false);
+      } else if (
+        signIn.status === "needs_second_factor" ||
+        signIn.status === "needs_client_trust"
+      ) {
+        const supported = getSupportedMfaStrategies(
+          signIn.supportedSecondFactors,
+        );
+        if (supported.length > 0) {
+          await prepareMfa(supported[0]);
+        } else {
+          setFlowMessage(
+            "This account requires a verification method that this version of SubHog cannot complete. Use another Clerk-enabled client or start over.",
+          );
+        }
+      } else {
+        setFlowMessage(
+          "Sign-in needs an additional step that is not available in this screen. Start over or reset your password.",
+        );
+      }
+    } catch (error) {
+      posthog?.captureException(error, { auth_flow: "sign_in" });
+      setFlowMessage(getAuthErrorMessage(error));
     }
   };
 
   const handleVerify = async () => {
-    await signIn.mfa.verifyEmailCode({ code });
+    if (!mfaStrategy) return;
 
-    if (signIn.status === "complete") {
-      posthog?.capture(
-        "user_signed_in",
-        sanitizePostHogProperties({
-          auth_method: "password",
-          required_verification: true,
-        }),
-      );
-      await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
+    setFlowMessage(null);
+    try {
+      const result =
+        mfaStrategy === "email_code"
+          ? await signIn.mfa.verifyEmailCode({ code: code.trim() })
+          : mfaStrategy === "phone_code"
+            ? await signIn.mfa.verifyPhoneCode({ code: code.trim() })
+            : mfaStrategy === "totp"
+              ? await signIn.mfa.verifyTOTP({ code: code.trim() })
+              : await signIn.mfa.verifyBackupCode({ code: code.trim() });
 
-          const url = decorateUrl("/(app)/(tabs)");
-          if (url.startsWith("http")) {
-            // Only use window.location on web platform
-            if (typeof window !== "undefined" && window.location) {
-              window.location.href = url;
-            } else {
-              // On native, just use router navigation
-              router.replace("/(app)/(tabs)" as Href);
-            }
-          } else {
-            router.replace(url as Href);
-          }
-        },
-      });
-    } else {
-      console.error("Sign-in attempt not complete:", signIn);
+      if (result.error) {
+        setFlowMessage(getAuthErrorMessage(result.error));
+        return;
+      }
+
+      if (signIn.status === "complete") {
+        await finalizeSignIn(true);
+      } else {
+        setFlowMessage(
+          "Verification is not complete. Try another available method or start over.",
+        );
+      }
+    } catch (error) {
+      posthog?.captureException(error, { auth_flow: "mfa_verify" });
+      setFlowMessage(getAuthErrorMessage(error));
     }
   };
 
-  // Show verification screen if client trust is needed
-  if (signIn.status === "needs_client_trust") {
+  // Show verification screen for MFA and device trust challenges.
+  if (
+    signIn.status === "needs_client_trust" ||
+    signIn.status === "needs_second_factor"
+  ) {
+    const supportedStrategies = getSupportedMfaStrategies(
+      signIn.supportedSecondFactors,
+    );
     return (
       <SafeAreaView className="auth-safe-area">
         <KeyboardAvoidingView
@@ -162,7 +206,9 @@ const SignIn = () => {
                 </View>
                 <Text className="auth-title">Verify your identity</Text>
                 <Text className="auth-subtitle">
-                  We sent a verification code to your email
+                  {mfaStrategy
+                    ? `Use ${getMfaStrategyLabel(mfaStrategy).toLowerCase()} to continue`
+                    : "Choose an available verification method to continue"}
                 </Text>
               </View>
 
@@ -170,16 +216,22 @@ const SignIn = () => {
               <View className="auth-card">
                 <View className="auth-form">
                   <View className="auth-field">
-                    <Text className="auth-label">Verification Code</Text>
+                    <Text className="auth-label">
+                      {mfaStrategy === "backup_code"
+                        ? "Backup Code"
+                        : "Verification Code"}
+                    </Text>
                     <TextInput
                       className="auth-input"
                       value={code}
                       placeholder="Enter 6-digit code"
                       placeholderTextColor="rgba(0, 0, 0, 0.4)"
                       onChangeText={setCode}
-                      keyboardType="number-pad"
+                      keyboardType={
+                        mfaStrategy === "backup_code" ? "default" : "number-pad"
+                      }
                       autoComplete="one-time-code"
-                      maxLength={6}
+                      maxLength={mfaStrategy === "backup_code" ? undefined : 6}
                     />
                     {errors.fields.code && (
                       <Text className="auth-error">
@@ -188,35 +240,67 @@ const SignIn = () => {
                     )}
                   </View>
 
+                  {flowMessage && (
+                    <Text className="auth-error">{flowMessage}</Text>
+                  )}
+                  {!flowMessage && supportedStrategies.length === 0 && (
+                    <Text className="auth-error">
+                      No supported verification method is available in this
+                      version of SubHog. Start over or use another Clerk-enabled
+                      client.
+                    </Text>
+                  )}
+
                   <Pressable
-                    className={`auth-button ${(!code || fetchStatus === "fetching") && "auth-button-disabled"}`}
+                    className={`auth-button ${(!code || !mfaStrategy || fetchStatus === "fetching") && "auth-button-disabled"}`}
                     onPress={handleVerify}
-                    disabled={!code || fetchStatus === "fetching"}
+                    disabled={
+                      !code || !mfaStrategy || fetchStatus === "fetching"
+                    }
                   >
                     <Text className="auth-button-text">
                       {fetchStatus === "fetching" ? "Verifying..." : "Verify"}
                     </Text>
                   </Pressable>
 
-                  <Pressable
-                    className="auth-secondary-button"
-                    onPress={() => signIn.mfa.sendEmailCode()}
-                    disabled={fetchStatus === "fetching"}
-                  >
-                    <Text className="auth-secondary-button-text">
-                      Resend Code
-                    </Text>
-                  </Pressable>
+                  {supportedStrategies.map((strategy) => (
+                    <Pressable
+                      key={strategy}
+                      className="auth-secondary-button"
+                      onPress={() => prepareMfa(strategy)}
+                      disabled={fetchStatus === "fetching"}
+                    >
+                      <Text className="auth-secondary-button-text">
+                        {strategy === mfaStrategy &&
+                        (strategy === "email_code" ||
+                          strategy === "phone_code")
+                          ? "Resend "
+                          : "Use "}
+                        {getMfaStrategyLabel(strategy)}
+                      </Text>
+                    </Pressable>
+                  ))}
 
                   <Pressable
                     className="auth-secondary-button"
-                    onPress={() => signIn.reset()}
+                    onPress={() => {
+                      setMfaStrategy(null);
+                      setFlowMessage(null);
+                      void signIn.reset();
+                    }}
                     disabled={fetchStatus === "fetching"}
                   >
                     <Text className="auth-secondary-button-text">
                       Start Over
                     </Text>
                   </Pressable>
+                  <Link href="/(auth)/reset-password" asChild>
+                    <Pressable className="auth-secondary-button">
+                      <Text className="auth-secondary-button-text">
+                        Reset Password
+                      </Text>
+                    </Pressable>
+                  </Link>
                 </View>
               </View>
             </View>
@@ -315,6 +399,16 @@ const SignIn = () => {
                     {fetchStatus === "fetching" ? "Signing In..." : "Sign In"}
                   </Text>
                 </Pressable>
+                <Link href="/(auth)/reset-password" asChild>
+                  <Pressable className="auth-secondary-button">
+                    <Text className="auth-secondary-button-text">
+                      Forgot Password?
+                    </Text>
+                  </Pressable>
+                </Link>
+                {flowMessage && (
+                  <Text className="auth-error">{flowMessage}</Text>
+                )}
               </View>
             </View>
 

@@ -1,5 +1,16 @@
-import { Stack } from "expo-router";
+import { SubscriptionProvider } from "@/providers/SubscriptionContext";
+import { useAuth } from "@clerk/expo";
+import { Redirect, Stack } from "expo-router";
 
 export default function AppLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+
+  return (
+    <SubscriptionProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SubscriptionProvider>
+  );
 }

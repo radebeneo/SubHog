@@ -4,7 +4,7 @@ import {
     formatStatusLabel,
     formatSubscriptionDateTime,
 } from "@/features/subscriptions/utils";
-import clsx from "clsx";
+import { clsx } from "clsx";
 import { Pressable, Text, View } from "react-native";
 
 const SubscriptionCard = ({
