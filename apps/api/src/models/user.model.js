@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema({
             return Boolean(this.identityProvider);
         },
     },
+    // Set when account deletion starts; blocks new owned writes and re-provisioning.
+    deletionStartedAt: {
+        type: Date,
+    },
 },{ timestamps: true });
 
 userSchema.path('password').validate(function rejectProviderPassword(password) {

@@ -25,6 +25,12 @@ const accountDeleteFailed = () => apiError(
     'The account could not be deleted',
 );
 
+const accountDeletionInProgress = () => apiError(
+    409,
+    'ACCOUNT_DELETION_IN_PROGRESS',
+    'The account is being deleted',
+);
+
 const identityConflict = () => apiError(
     409,
     'IDENTITY_CONFLICT',
@@ -96,6 +102,11 @@ const findReminderWorkflows = (associatedUserId) => Subscription.find({
     user: associatedUserId,
 }).select('workflowRunId').lean().exec();
 
+const markDeletionStarted = (associatedUserId, UserModel) => UserModel.updateOne(
+    { _id: associatedUserId, deletionStartedAt: null },
+    { $set: { deletionStartedAt: new Date() } },
+).exec();
+
 const deleteSubscriptions = (associatedUserId) => Subscription.deleteMany({
     user: associatedUserId,
 }).exec();
@@ -116,6 +127,7 @@ export const createIdentityService = ({
     createUser = (document) => createAssociatedUser(document, UserModel),
     associationLookup = (identity) => findAssociation(identity, UserModel),
     reminderWorkflowLookup = findReminderWorkflows,
+    deletionMarker = (userId) => markDeletionStarted(userId, UserModel),
     ownedSubscriptionsDelete = deleteSubscriptions,
     associatedUserDelete = (identity, userId) => (
         deleteAssociatedUser(identity, userId, UserModel)
@@ -148,6 +160,8 @@ export const createIdentityService = ({
             throw provisioningFailed();
         }
 
+        if (associatedUser?.deletionStartedAt) throw accountDeletionInProgress();
+
         if (associatedUser) {
             return { created: false, data: serializeProvisionedIdentity(identity, associatedUser) };
         }
@@ -162,6 +176,7 @@ export const createIdentityService = ({
         }
 
         if (emailUser) {
+            if (emailUser.deletionStartedAt) throw accountDeletionInProgress();
             if (matchesIdentityAndEmail(emailUser, identity, profile.email)) {
                 return {
                     created: false,
@@ -200,6 +215,10 @@ export const createIdentityService = ({
             throw provisioningFailed();
         }
 
+        if (racedAssociation?.deletionStartedAt || racedEmail?.deletionStartedAt) {
+            throw accountDeletionInProgress();
+        }
+
         if (matchesIdentityAndEmail(racedAssociation, identity, profile.email)) {
             return {
                 created: false,
@@ -233,6 +252,12 @@ export const createIdentityService = ({
             throw accountDeleteFailed();
         }
         if (!associatedUser) return;
+
+        try {
+            await deletionMarker(associatedUser._id);
+        } catch {
+            throw accountDeleteFailed();
+        }
 
         let subscriptions = [];
         try {

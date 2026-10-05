@@ -787,6 +787,7 @@ test('account deletion scopes cleanup to the authenticated association and is id
                 { workflowRunId: 'workflow-two' },
             ];
         },
+        deletionMarker: async () => {},
         ownedSubscriptionsDelete: async (associatedUserId) => {
             calls.push(['subscriptions', associatedUserId]);
         },
@@ -817,6 +818,7 @@ test('account deletion keeps data when workflow lookup or cancellation fails', a
         reminderWorkflowLookup: async () => {
             throw new Error('workflow lookup details');
         },
+        deletionMarker: async () => {},
         ownedSubscriptionsDelete: async (associatedUserId) => {
             deleted.push(['subscriptions', associatedUserId]);
         },
@@ -836,6 +838,7 @@ test('account deletion keeps data when workflow lookup or cancellation fails', a
     const cancellationService = createIdentityService({
         associationLookup: async () => ({ _id: storedUser._id }),
         reminderWorkflowLookup: async () => [{ workflowRunId: 'workflow-one' }],
+        deletionMarker: async () => {},
         ownedSubscriptionsDelete: async () => deleted.push(['subscriptions']),
         associatedUserDelete: async () => deleted.push(['user']),
         workflowCancellation: async () => {
@@ -861,14 +864,16 @@ test('account deletion maps database failures to ACCOUNT_DELETE_FAILED', async (
         {
             associationLookup: async () => ({ _id: storedUser._id }),
             reminderWorkflowLookup: async () => [],
-            ownedSubscriptionsDelete: async () => {
+            deletionMarker: async () => {},
+        ownedSubscriptionsDelete: async () => {
                 throw new Error('subscription database details');
             },
         },
         {
             associationLookup: async () => ({ _id: storedUser._id }),
             reminderWorkflowLookup: async () => [],
-            ownedSubscriptionsDelete: async () => undefined,
+            deletionMarker: async () => {},
+        ownedSubscriptionsDelete: async () => undefined,
             associatedUserDelete: async () => {
                 throw new Error('user database details');
             },
@@ -954,4 +959,32 @@ test('account deletion failures use the exact safe API envelope', async () => {
     } finally {
         server.close();
     }
+});
+
+test('account deletion marks the owner before sweeping owned data', async () => {
+    const calls = [];
+    const service = createIdentityService({
+        associationLookup: async () => ({ _id: storedUser._id }),
+        reminderWorkflowLookup: async () => [],
+        deletionMarker: async () => calls.push('mark'),
+        ownedSubscriptionsDelete: async () => calls.push('subscriptions'),
+        associatedUserDelete: async () => calls.push('user'),
+    });
+
+    await service.deleteIdentity(identity);
+
+    assert.deepEqual(calls, ['mark', 'subscriptions', 'user']);
+});
+
+test('provisioning refuses a user whose deletion is in progress', async () => {
+    const service = createIdentityService({
+        UserModel: {
+            findOne: async () => ({ ...storedUser, deletionStartedAt: new Date() }),
+        },
+    });
+
+    await assert.rejects(
+        service.provisionIdentity(identity),
+        { code: 'ACCOUNT_DELETION_IN_PROGRESS' },
+    );
 });

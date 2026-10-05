@@ -70,6 +70,7 @@ test('create derives its owner from Clerk and returns the strict DTO', async () 
     let scheduled;
     let tracked;
     const service = createOwnedSubscriptionService({
+        ownerActiveCheck: async () => true,
         associationLookup: async (receivedIdentity) => {
             assert.deepEqual(receivedIdentity, identity);
             return { _id: ownerId };
@@ -120,6 +121,7 @@ test('create rejects server-controlled fields and legacy credentials before writ
     let writes = 0;
     const service = createOwnedSubscriptionService({
         associationLookup: async () => ({ _id: ownerId }),
+        ownerActiveCheck: async () => true,
         subscriptionCreate: async () => {
             writes += 1;
         },
@@ -166,6 +168,7 @@ test('create maps reminder scheduling failures to the generic write envelope', a
     const service = createOwnedSubscriptionService({
         subscriptionRollback: async (id) => rolledBack.push(id),
         associationLookup: async () => ({ _id: ownerId }),
+        ownerActiveCheck: async () => true,
         subscriptionCreate: async (attributes) => ({
             ...baseSubscription,
             ...attributes,
@@ -203,6 +206,7 @@ test('create rolls back the subscription and cancels the workflow when tracking 
     const cancelled = [];
     const service = createOwnedSubscriptionService({
         associationLookup: async () => ({ _id: ownerId }),
+        ownerActiveCheck: async () => true,
         subscriptionCreate: async (attributes) => ({
             ...baseSubscription,
             ...attributes,
@@ -312,4 +316,30 @@ test('only cancel is idempotent; create, update, and delete are not auto-retryab
         cancel: true,
         delete: false,
     });
+});
+
+test('create undoes itself when the owner deletion started concurrently', async () => {
+    const rolledBack = [];
+    const cancelled = [];
+    const service = createOwnedSubscriptionService({
+        associationLookup: async () => ({ _id: ownerId }),
+        ownerActiveCheck: async () => false,
+        subscriptionCreate: async (attributes) => ({
+            ...baseSubscription,
+            ...attributes,
+            renewalDate: baseSubscription.renewalDate,
+        }),
+        reminderScheduling: async () => {
+            throw new Error('must not schedule for a deleting owner');
+        },
+        subscriptionRollback: async (id) => rolledBack.push(id),
+        workflowCancellation: async (request) => cancelled.push(request),
+    });
+
+    await assert.rejects(
+        service.createOwnedSubscription(identity, createBody),
+        { code: 'SUBSCRIPTION_WRITE_FAILED' },
+    );
+    assert.deepEqual(rolledBack, [subscriptionId]);
+    assert.deepEqual(cancelled, []);
 });

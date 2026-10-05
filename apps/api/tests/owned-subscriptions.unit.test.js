@@ -300,6 +300,7 @@ test('production listing adapter performs only allowlisted reads with the requir
         assert.deepEqual(query, {
             identityProvider: 'clerk',
             providerSubject: 'user_subject',
+            deletionStartedAt: null,
         });
         return {
             select(fields) {

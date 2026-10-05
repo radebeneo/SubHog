@@ -146,7 +146,12 @@ export const serializeOwnedSubscription = (subscription) => {
 const findAssociation = (identity) => User.findOne({
     identityProvider: identity.provider,
     providerSubject: identity.subject,
+    deletionStartedAt: null,
 }).select('_id').lean().exec();
+
+const ownerIsActive = async (associatedUserId) => Boolean(
+    await User.exists({ _id: associatedUserId, deletionStartedAt: null }),
+);
 
 const findSubscriptions = (associatedUserId) => Subscription.find({
     user: associatedUserId,
@@ -251,6 +256,7 @@ const saveSubscription = async (subscription) => {
 
 export const createOwnedSubscriptionService = ({
     associationLookup = findAssociation,
+    ownerActiveCheck = ownerIsActive,
     subscriptionLookup = findSubscriptions,
     upcomingRenewalsLookup = findUpcomingRenewals,
     itemLookup = findSubscription,
@@ -346,6 +352,9 @@ export const createOwnedSubscriptionService = ({
         const serialized = serializeForOwner(subscription, associatedUserId);
         let scheduledRunId;
         try {
+            // Account deletion marks the owner before sweeping, so a write that landed
+            // after the sweep must observe the mark here and undo itself.
+            if (!await ownerActiveCheck(associatedUserId)) throw subscriptionWriteFailed();
             const { workflowRunId } = await reminderScheduling({
                 subscriptionId: serialized._id,
             });
