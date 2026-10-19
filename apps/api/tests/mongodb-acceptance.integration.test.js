@@ -329,7 +329,7 @@ test('INT-01A MongoDB persistence acceptance', async (t) => {
                     ...base,
                     _id: olderId,
                     createdAt: new Date(now - 2000),
-                    workflowRunId: 'must-not-leak',
+                    privateField: 'must-not-leak',
                 },
                 {
                     ...base,
@@ -365,7 +365,7 @@ test('INT-01A MongoDB persistence acceptance', async (t) => {
                 'createdAt',
                 'updatedAt',
             ]);
-            assert.equal(JSON.stringify(listed).includes('workflowRunId'), false);
+            assert.equal(JSON.stringify(listed).includes('privateField'), false);
 
             const otherIdentity = { provider: 'clerk', subject: subject('owner-check') };
             const other = await createService('Other Owner', email('owner-check'))

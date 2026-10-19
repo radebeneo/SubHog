@@ -240,7 +240,7 @@ test('matching ownership returns the complete allowlisted DTO in deterministic o
                     _id: oldestId,
                     createdAt: new Date('2025-12-31T23:59:59.999Z'),
                 },
-                { ...baseSubscription, _id: olderId, workflowRunId: 'private-workflow' },
+                { ...baseSubscription, _id: olderId, privateField: 'private' },
                 {
                     ...baseSubscription,
                     _id: newestId,
@@ -276,7 +276,7 @@ test('matching ownership returns the complete allowlisted DTO in deterministic o
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-02T00:00:00.000Z',
         });
-        assert.equal(JSON.stringify(payload).includes('workflowRunId'), false);
+        assert.equal(JSON.stringify(payload).includes('privateField'), false);
         assert.equal(JSON.stringify(payload).includes('password'), false);
         assert.equal(JSON.stringify(payload).includes('identityProvider'), false);
     } finally {

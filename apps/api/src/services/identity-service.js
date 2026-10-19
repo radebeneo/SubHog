@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 
-import { workflowClient } from '../config/upstash.js';
 import IdentityDeletion from '../models/identity-deletion.model.js';
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
@@ -99,10 +98,6 @@ const findAssociation = (identity, UserModel) => UserModel.findOne({
     providerSubject: identity.subject,
 }).select('_id').lean().exec();
 
-const findReminderWorkflows = (associatedUserId) => Subscription.find({
-    user: associatedUserId,
-}).select('workflowRunId').lean().exec();
-
 const identityDeletionQuery = (identity) => ({
     identityProvider: identity.provider,
     providerSubject: identity.subject,
@@ -139,8 +134,6 @@ const deleteAssociatedUser = (identity, associatedUserId, UserModel) => (
     }).exec()
 );
 
-const cancelWorkflows = (ids) => workflowClient.cancel({ ids });
-
 const waitForSubscriptionCreations = async (associatedUserId, UserModel) => {
     const timeoutAt = Date.now() + 30_000;
     while (true) {
@@ -161,7 +154,6 @@ export const createIdentityService = ({
     createUser = (document) => createAssociatedUser(document, UserModel),
     associationLookup = (identity) => findAssociation(identity, UserModel),
     deletionRecordLookup = (identity) => findDeletionRecord(identity, DeletionModel),
-    reminderWorkflowLookup = findReminderWorkflows,
     deletionMarker = (identity, userId) => (
         markDeletionStarted(identity, userId, UserModel, DeletionModel)
     ),
@@ -170,8 +162,6 @@ export const createIdentityService = ({
     associatedUserDelete = (identity, userId) => (
         deleteAssociatedUser(identity, userId, UserModel)
     ),
-    workflowCancellation = cancelWorkflows,
-    workflowCancellationError = console.error,
 } = {}) => {
     const identityIsDeleted = async (identity) => {
         try {
@@ -334,29 +324,6 @@ export const createIdentityService = ({
             throw accountDeleteFailed();
         }
         if (!associatedUser) return;
-
-        let subscriptions = [];
-        try {
-            const found = await reminderWorkflowLookup(associatedUser._id);
-            if (Array.isArray(found)) subscriptions = found;
-        } catch (error) {
-            workflowCancellationError('Could not gather account reminder workflows', error);
-            throw accountDeleteFailed();
-        }
-        const workflowIds = [...new Set(
-            subscriptions
-                .map((subscription) => subscription?.workflowRunId)
-                .filter((value) => typeof value === 'string' && value.length > 0),
-        )];
-
-        if (workflowIds.length > 0) {
-            try {
-                await workflowCancellation(workflowIds);
-            } catch (error) {
-                workflowCancellationError('Could not cancel account reminder workflows', error);
-                throw accountDeleteFailed();
-            }
-        }
 
         try {
             await ownedSubscriptionsDelete(associatedUser._id);

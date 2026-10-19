@@ -229,7 +229,7 @@ test("accepts a bodyless 204 delete and rejects a body-bearing success", async (
 test("validates mutation responses as exact subscription DTOs", async () => {
   const responseWithServerOnlyField = {
     ...subscriptionFixture,
-    workflowRunId: "wfr_private",
+    privateField: "private",
   };
   const create = createClient([successFixture(responseWithServerOnlyField)]);
   await assert.rejects(

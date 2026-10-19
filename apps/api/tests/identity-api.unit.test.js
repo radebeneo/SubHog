@@ -787,15 +787,6 @@ test('account deletion scopes cleanup to the authenticated association and is id
             assert.deepEqual(receivedIdentity, identity);
             return associatedUser;
         },
-        reminderWorkflowLookup: async (associatedUserId) => {
-            assert.equal(associatedUserId, storedUser._id);
-            return [
-                { workflowRunId: 'workflow-one' },
-                { workflowRunId: 'workflow-one' },
-                { workflowRunId: null },
-                { workflowRunId: 'workflow-two' },
-            ];
-        },
         deletionMarker: async () => {},
         creationDrain: async () => {},
         ownedSubscriptionsDelete: async (associatedUserId) => {
@@ -805,65 +796,15 @@ test('account deletion scopes cleanup to the authenticated association and is id
             calls.push(['user', receivedIdentity, associatedUserId]);
             associatedUser = null;
         },
-        workflowCancellation: async (ids) => {
-            calls.push(['workflows', ids]);
-        },
     });
 
     await service.deleteIdentity(identity);
     await service.deleteIdentity(identity);
 
     assert.deepEqual(calls, [
-        ['workflows', ['workflow-one', 'workflow-two']],
         ['subscriptions', storedUser._id],
         ['user', identity, storedUser._id],
     ]);
-});
-
-test('account deletion keeps data when workflow lookup or cancellation fails', async () => {
-    const deleted = [];
-    const logged = [];
-    const lookupFailureService = createIdentityService({
-        associationLookup: async () => ({ _id: storedUser._id }),
-        reminderWorkflowLookup: async () => {
-            throw new Error('workflow lookup details');
-        },
-        deletionMarker: async () => {},
-        creationDrain: async () => {},
-        ownedSubscriptionsDelete: async (associatedUserId) => {
-            deleted.push(['subscriptions', associatedUserId]);
-        },
-        associatedUserDelete: async () => {
-            deleted.push(['user']);
-        },
-        workflowCancellationError: (...args) => logged.push(args),
-    });
-
-    await assert.rejects(
-        lookupFailureService.deleteIdentity(identity),
-        { code: 'ACCOUNT_DELETE_FAILED' },
-    );
-    assert.deepEqual(deleted, []);
-    assert.equal(logged.length, 1);
-
-    const cancellationService = createIdentityService({
-        associationLookup: async () => ({ _id: storedUser._id }),
-        reminderWorkflowLookup: async () => [{ workflowRunId: 'workflow-one' }],
-        deletionMarker: async () => {},
-        creationDrain: async () => {},
-        ownedSubscriptionsDelete: async () => deleted.push(['subscriptions']),
-        associatedUserDelete: async () => deleted.push(['user']),
-        workflowCancellation: async () => {
-            throw new Error('provider details');
-        },
-        workflowCancellationError: (...args) => logged.push(args),
-    });
-    await assert.rejects(
-        cancellationService.deleteIdentity(identity),
-        { code: 'ACCOUNT_DELETE_FAILED' },
-    );
-    assert.deepEqual(deleted, []);
-    assert.equal(logged.length, 2);
 });
 
 test('account deletion maps database failures to ACCOUNT_DELETE_FAILED', async () => {
@@ -875,19 +816,17 @@ test('account deletion maps database failures to ACCOUNT_DELETE_FAILED', async (
         },
         {
             associationLookup: async () => ({ _id: storedUser._id }),
-            reminderWorkflowLookup: async () => [],
             deletionMarker: async () => {},
             creationDrain: async () => {},
-        ownedSubscriptionsDelete: async () => {
+            ownedSubscriptionsDelete: async () => {
                 throw new Error('subscription database details');
             },
         },
         {
             associationLookup: async () => ({ _id: storedUser._id }),
-            reminderWorkflowLookup: async () => [],
             deletionMarker: async () => {},
             creationDrain: async () => {},
-        ownedSubscriptionsDelete: async () => undefined,
+            ownedSubscriptionsDelete: async () => undefined,
             associatedUserDelete: async () => {
                 throw new Error('user database details');
             },
@@ -979,7 +918,6 @@ test('account deletion marks the owner before sweeping owned data', async () => 
     const calls = [];
     const service = createIdentityService({
         associationLookup: async () => ({ _id: storedUser._id }),
-        reminderWorkflowLookup: async () => [],
         deletionMarker: async () => calls.push('mark'),
         creationDrain: async (userId) => {
             assert.equal(userId, storedUser._id);
@@ -994,7 +932,7 @@ test('account deletion marks the owner before sweeping owned data', async () => 
     assert.deepEqual(calls, ['mark', 'drain', 'subscriptions', 'user']);
 });
 
-test('account deletion waits for active subscription creations before looking up workflows', async () => {
+test('account deletion waits for active subscription creations before deleting data', async () => {
     let activeSubscriptionCreations = 1;
     const calls = [];
     const service = createIdentityService({
@@ -1010,11 +948,6 @@ test('account deletion waits for active subscription creations before looking up
         },
         associationLookup: async () => ({ _id: storedUser._id }),
         deletionMarker: async () => calls.push('mark'),
-        reminderWorkflowLookup: async () => {
-            calls.push('workflows');
-            assert.equal(activeSubscriptionCreations, 0);
-            return [];
-        },
         ownedSubscriptionsDelete: async () => calls.push('subscriptions'),
         associatedUserDelete: async () => calls.push('user'),
     });
@@ -1024,7 +957,7 @@ test('account deletion waits for active subscription creations before looking up
 
     try {
         await service.deleteIdentity(identity);
-        assert.deepEqual(calls, ['mark', 'workflows', 'subscriptions', 'user']);
+        assert.deepEqual(calls, ['mark', 'subscriptions', 'user']);
     } finally {
         clearTimeout(releaseCreation);
     }

@@ -9,8 +9,6 @@ import { isNonNegativeMoneyAmount } from '@subhog/domain';
 
 import Subscription from '../models/subscription.model.js';
 import User from '../models/user.model.js';
-import { workflowClient } from '../config/upstash.js';
-import { SERVER_URL } from '../config/env.js';
 
 const CURRENCIES = new Set(SUBSCRIPTION_CURRENCIES);
 const FREQUENCIES = new Set(SUBSCRIPTION_FREQUENCIES);
@@ -183,27 +181,14 @@ const findSubscription = (subscriptionId, associatedUserId) => Subscription.find
 const findSubscriptionDocument = (subscriptionId, associatedUserId) => Subscription.findOne({
     _id: subscriptionId,
     user: associatedUserId,
-}).select([...OWNED_SUBSCRIPTION_FIELDS, 'workflowRunId'].join(' ')).exec();
+}).select(OWNED_SUBSCRIPTION_FIELDS.join(' ')).exec();
 
 const deleteSubscription = (subscriptionId, associatedUserId) => Subscription.findOneAndDelete({
     _id: subscriptionId,
     user: associatedUserId,
-}).select('_id workflowRunId').lean().exec();
-
-const cancelWorkflow = ({ ids }) => workflowClient.cancel({ ids });
+}).select('_id').lean().exec();
 
 const createSubscription = (attributes) => Subscription.create(attributes);
-
-const scheduleReminder = ({ subscriptionId }) => workflowClient.trigger({
-    url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
-    body: { subscriptionId },
-    headers: { 'content-type': 'application/json' },
-    retries: 0,
-});
-
-const trackReminderWorkflow = (subscriptionId, workflowRunId) => (
-    Subscription.findByIdAndUpdate(subscriptionId, { workflowRunId }).exec()
-);
 
 const resolveAssociatedUserId = async (identity, associationLookup, failure) => {
     let associatedUser;
@@ -272,27 +257,9 @@ export const createOwnedSubscriptionService = ({
     itemDocumentLookup = findSubscriptionDocument,
     itemDelete = deleteSubscription,
     subscriptionCreate = createSubscription,
-    reminderScheduling = scheduleReminder,
-    reminderTracking = trackReminderWorkflow,
-    workflowCancellation = cancelWorkflow,
-    workflowCancellationError = console.error,
+    creationReservationError = console.error,
     now = () => new Date(),
 } = {}) => {
-    const cancelTrackedWorkflow = async (subscription) => {
-        if (!subscription.workflowRunId) return true;
-
-        try {
-            await workflowCancellation({ ids: subscription.workflowRunId });
-            return true;
-        } catch (error) {
-            workflowCancellationError(
-                `Could not cancel reminder workflow ${subscription.workflowRunId}`,
-                error,
-            );
-            return false;
-        }
-    };
-
     const listOwnedSubscriptions = async (identity, requestedId) => {
         const canonicalRequestedId = canonicalObjectId(requestedId);
         if (!canonicalRequestedId) {
@@ -361,7 +328,7 @@ export const createOwnedSubscriptionService = ({
             try {
                 await ownerCreationFinish(associatedUserId);
             } catch (error) {
-                workflowCancellationError(
+                creationReservationError(
                     `Could not release subscription creation reservation for ${associatedUserId}`,
                     error,
                 );
@@ -370,7 +337,6 @@ export const createOwnedSubscriptionService = ({
         };
 
         let serialized;
-        let reservationCanRelease = true;
         try {
             let subscription;
             try {
@@ -381,62 +347,13 @@ export const createOwnedSubscriptionService = ({
                 }
                 throw subscriptionWriteFailed();
             }
-
             serialized = serializeForOwner(subscription, associatedUserId);
-            let scheduledRunId;
-            try {
-                const { workflowRunId } = await reminderScheduling({
-                    subscriptionId: serialized._id,
-                });
-                if (!requiredString(workflowRunId)) throw subscriptionWriteFailed();
-                scheduledRunId = workflowRunId;
-                const trackedSubscription = await reminderTracking(
-                    serialized._id,
-                    workflowRunId,
-                );
-                if (!trackedSubscription) throw subscriptionWriteFailed();
-            } catch {
-                const workflowCanceled = await cancelTrackedWorkflow({
-                    workflowRunId: scheduledRunId,
-                });
-                if (workflowCanceled) {
-                    try {
-                        await itemDelete(serialized._id, associatedUserId);
-                    } catch (error) {
-                        workflowCancellationError(
-                            `Could not roll back subscription ${serialized._id}`,
-                            error,
-                        );
-                    }
-                } else if (scheduledRunId) {
-                    let trackedForDeletion = false;
-                    try {
-                        trackedForDeletion = Boolean(await reminderTracking(
-                            serialized._id,
-                            scheduledRunId,
-                        ));
-                    } catch (error) {
-                        workflowCancellationError(
-                            `Could not record reminder workflow ${scheduledRunId} for deletion`,
-                            error,
-                        );
-                    }
-                    if (!trackedForDeletion) {
-                        reservationCanRelease = false;
-                        workflowCancellationError(
-                            `Could not cancel or record reminder workflow ${scheduledRunId}`,
-                            new Error('Reminder workflow cleanup failed'),
-                        );
-                    }
-                }
-                throw subscriptionWriteFailed();
-            }
         } catch (error) {
-            if (reservationCanRelease) await releaseReservation();
+            await releaseReservation();
             throw error;
         }
 
-        if (reservationCanRelease) await releaseReservation();
+        await releaseReservation();
         return serialized;
     };
 
@@ -531,7 +448,6 @@ export const createOwnedSubscriptionService = ({
             subscription.status = 'cancelled';
             subscription = await saveSubscription(subscription);
         }
-        await cancelTrackedWorkflow(subscription);
         return serializeForOwner(subscription, associatedUserId);
     };
 
@@ -550,10 +466,6 @@ export const createOwnedSubscriptionService = ({
             throw subscriptionWriteFailed();
         }
         if (!subscription) throw subscriptionNotFound();
-
-        if (!await cancelTrackedWorkflow(subscription)) {
-            throw subscriptionWriteFailed();
-        }
 
         let deleted;
         try {

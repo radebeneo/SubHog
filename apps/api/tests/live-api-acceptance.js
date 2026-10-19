@@ -46,7 +46,7 @@ const request = async (baseUrl, path, {
     const serialized = JSON.stringify(payload);
     assert.equal(serialized.includes(config.primaryToken), false);
     assert.equal(serialized.includes(config.secondaryToken), false);
-    assert.equal(serialized.includes('workflowRunId'), false);
+    assert.equal(serialized.includes('privateField'), false);
     assert.equal(serialized.includes('password'), false);
     return { response, payload };
 };

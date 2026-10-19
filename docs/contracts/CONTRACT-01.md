@@ -205,7 +205,7 @@ The enums are:
 `paymentMethod` is a required non-empty string, not an enum. IDs are strings.
 `startDate`, `createdAt`, and `updatedAt` are UTC ISO 8601 strings.
 `renewalDate` is either a UTC ISO 8601 string or `null` for representable legacy
-records. `workflowRunId` and all non-allowlisted persistence fields are omitted.
+records. All non-allowlisted persistence fields are omitted.
 A record that cannot be safely represented returns `500 DATA_INTEGRITY_ERROR`;
 the API does not return a partial or widened projection.
 
@@ -274,7 +274,7 @@ DTO in the success envelope.
 - `renewalDate`
 
 At least one allowlisted field is required. Client-controlled `_id`, `user`,
-`status`, `workflowRunId`, timestamps, identity fields, and every unknown field
+`status`, timestamps, identity fields, and every unknown field
 are rejected with `400 REQUEST_INVALID`. Input enums match the output enums,
 money is a finite non-negative number, and input dates must be valid dates
 consistent with subscription date invariants.
@@ -297,16 +297,10 @@ Any field returns `400 REQUEST_INVALID`. It uses an owner-scoped compound
 delete. Success is `204 No Content` with an empty body.
 
 All item-route reads and writes use explicit database projections or response
-serialization allowlists. They never expose `workflowRunId`, identity data,
+serialization allowlists. They never expose internal persistence fields, identity data,
 credentials, provider fields, or other persistence internals.
 
-## Workflow and preservation
-
-Upstash QStash is the reminder delivery/orchestration service and
-`@upstash/workflow` is the server SDK. `workflowRunId` is internal persistence
-used by reminder triggering; it is not a Clerk credential, Clerk session, or
-public subscription field. This contract does not change callback verification
-or reminder behavior.
+## Persistence and preservation
 
 Rollbacks and deployments preserve existing users, inline identity
 associations, emails, passwords, and subscriptions. Failed provisioning or

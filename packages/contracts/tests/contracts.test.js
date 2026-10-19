@@ -72,7 +72,7 @@ test("subscription creation requires exactly the validated client fields", () =>
     { ...request, startDate: "2026-01-01" },
     { ...request, user: ownerId },
     { ...request, status: "active" },
-    { ...request, workflowRunId: "private" },
+    { ...request, privateField: "private" },
     { ...request, renewalDate: "2025-12-31T00:00:00.000Z" },
   ]) {
     assert.equal(isCreateSubscriptionRequest(value), false);
@@ -90,7 +90,7 @@ test("pins the complete-list array envelope and exact UTC ISO DTO", () => {
     isApiSuccessEnvelope({ success: true, data: { items: [subscription] } }, isSubscriptionDtoList),
     false,
   );
-  assert.equal(isSubscriptionDto({ ...subscription, workflowRunId: "private" }), false);
+  assert.equal(isSubscriptionDto({ ...subscription, privateField: "private" }), false);
   assert.equal(isSubscriptionDto({ ...subscription, createdAt: "2026-01-01" }), false);
   assert.equal(isSubscriptionDto({ ...subscription, currency: "EUR" }), false);
 });
@@ -120,7 +120,7 @@ test("subscription updates allow only validated client-controlled fields", () =>
     {},
     { user: ownerId },
     { status: "cancelled" },
-    { workflowRunId: "private" },
+    { privateField: "private" },
     { name: "x" },
     { price: Number.NaN },
     { currency: "EUR" },
