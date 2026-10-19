@@ -19,6 +19,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -49,23 +50,33 @@ const idleActionState: SubscriptionActionState = { status: "idle" };
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { getToken, isLoaded, isSignedIn, sessionId, userId } = useAuth();
-  const setup = useMemo(() => {
+  const [setup] = useState(() => {
+    let currentGetToken = getToken;
+    const updateGetToken = (next: typeof getToken) => {
+      currentGetToken = next;
+    };
+
     try {
       const baseUrl = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
       const api = createApiClient({
         baseUrl,
-        getToken: (options) => getToken(options),
+        getToken: (options) => currentGetToken(options),
       });
-      return { controller: new SubscriptionController(api), error: null };
+      return { controller: new SubscriptionController(api), error: null, updateGetToken };
     } catch (error) {
       return {
         controller: null,
         error: configurationFailure(
           error instanceof Error ? error.message : "API configuration is invalid.",
         ),
+        updateGetToken,
       };
     }
-  }, [getToken]);
+  });
+
+  useEffect(() => {
+    setup.updateGetToken(getToken);
+  }, [getToken, setup]);
 
   const state = useSyncExternalStore(
     setup.controller?.subscribe ?? noopSubscribe,
