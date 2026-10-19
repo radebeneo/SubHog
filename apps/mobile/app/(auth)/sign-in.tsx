@@ -6,6 +6,7 @@ import {
   getSupportedMfaStrategies,
   type SupportedMfaStrategy,
 } from "@/features/auth/auth-state";
+import { SocialAuthButtons } from "@/features/auth/social-auth-buttons";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -413,6 +414,7 @@ const SignIn = () => {
                 {flowMessage && (
                   <Text className="auth-error">{flowMessage}</Text>
                 )}
+                <SocialAuthButtons />
               </View>
             </View>
 

@@ -4,6 +4,7 @@ import {
   isValidProfileName,
   normalizeProfileNamePart,
 } from "@/features/profile/profile-name";
+import { SocialAuthButtons } from "@/features/auth/social-auth-buttons";
 import { useAuth, useSignUp } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -333,6 +334,7 @@ const SignUp = () => {
                       : "Create Account"}
                   </Text>
                 </Pressable>
+                <SocialAuthButtons onSignUp />
               </View>
             </View>
 
