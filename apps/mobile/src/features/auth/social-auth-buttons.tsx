@@ -1,5 +1,6 @@
 import { posthog } from "@/adapters/posthog";
 import { getAuthErrorMessage } from "@/features/auth/auth-state";
+import { AntDesign } from "@expo/vector-icons";
 import { useSSO } from "@clerk/expo/experimental";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -10,8 +11,8 @@ import { Platform, Pressable, Text, View } from "react-native";
 WebBrowser.maybeCompleteAuthSession();
 
 const providers = [
-  { name: "Google", strategy: "oauth_google" },
-  { name: "Apple", strategy: "oauth_apple" },
+  { name: "Google", strategy: "oauth_google", icon: "google" },
+  { name: "Apple", strategy: "oauth_apple", icon: "apple" },
 ] as const;
 
 type Strategy = (typeof providers)[number]["strategy"];
@@ -73,19 +74,18 @@ export function SocialAuthButtons({ onSignUp = false }: { onSignUp?: boolean }) 
         <Text className="auth-divider-text">Or continue with</Text>
         <View className="auth-divider-line" />
       </View>
-      <View className="gap-3">
-        {providers.map(({ name, strategy }) => (
+      <View className="flex-row gap-3">
+        {providers.map(({ name, strategy, icon }) => (
           <Pressable
             key={strategy}
-            className="auth-secondary-button"
+            className="auth-secondary-button flex-1"
+            style={{ opacity: pending === strategy ? 0.5 : 1 }}
             accessibilityRole="button"
             accessibilityLabel={`Continue with ${name}`}
             disabled={pending !== null}
             onPress={() => void handlePress(strategy)}
           >
-            <Text className="auth-secondary-button-text">
-              {pending === strategy ? `Connecting to ${name}...` : `Continue with ${name}`}
-            </Text>
+            <AntDesign name={icon} size={22} color="#000" />
           </Pressable>
         ))}
       </View>
