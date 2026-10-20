@@ -74,18 +74,18 @@ export function SocialAuthButtons({ onSignUp = false }: { onSignUp?: boolean }) 
         <Text className="auth-divider-text">Or continue with</Text>
         <View className="auth-divider-line" />
       </View>
-      <View className="flex-row gap-3">
+      <View className="flex-row items-center justify-center gap-8">
         {providers.map(({ name, strategy, icon }) => (
           <Pressable
             key={strategy}
-            className="auth-secondary-button flex-1"
+            hitSlop={12}
             style={{ opacity: pending === strategy ? 0.5 : 1 }}
             accessibilityRole="button"
             accessibilityLabel={`Continue with ${name}`}
             disabled={pending !== null}
             onPress={() => void handlePress(strategy)}
           >
-            <AntDesign name={icon} size={22} color="#000" />
+            <AntDesign name={icon} size={32} color="#000" />
           </Pressable>
         ))}
       </View>
