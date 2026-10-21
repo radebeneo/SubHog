@@ -1,6 +1,10 @@
 import { posthog, sanitizePostHogProperties } from "@/adapters/posthog";
 import { resolveApiBaseUrl } from "@/config/api-config";
 import {
+  resolveClerkTokenConfig,
+  withClerkTokenTemplate,
+} from "@/config/clerk-token";
+import {
   ACCOUNT_DELETE_RETRY_MESSAGE,
   deleteAccount,
 } from "@/features/account/account-deletion";
@@ -19,16 +23,17 @@ const Settings = () => {
   const sessionList = useSessionList();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const tokenConfig = useMemo(() => resolveClerkTokenConfig(), []);
   const accountApi = useMemo(() => {
     try {
       return createApiClient({
         baseUrl: resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
-        getToken: (options) => getToken(options),
+        getToken: (options) => getToken(withClerkTokenTemplate(options, tokenConfig)),
       });
     } catch {
       return null;
     }
-  }, [getToken]);
+  }, [getToken, tokenConfig]);
   const otherSessions = sessionList.isLoaded && sessionId
     ? sessionList.sessions.filter((session) => session.id !== sessionId)
     : [];

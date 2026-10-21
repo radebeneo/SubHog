@@ -1,5 +1,6 @@
 export interface TokenOptions {
   skipCache?: boolean;
+  template?: string;
 }
 
 export type TokenGetter = (

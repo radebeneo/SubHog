@@ -1,6 +1,10 @@
 import { createApiClient } from "@subhog/api-client";
 import { resolveApiBaseUrl } from "@/config/api-config";
 import {
+  resolveClerkTokenConfig,
+  withClerkTokenTemplate,
+} from "@/config/clerk-token";
+import {
   configurationFailure,
   SubscriptionController,
   type AuthSnapshot,
@@ -52,6 +56,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { getToken, isLoaded, isSignedIn, sessionId, userId } = useAuth();
   const [setup] = useState(() => {
     let currentGetToken = getToken;
+    const tokenConfig = resolveClerkTokenConfig();
     const updateGetToken = (next: typeof getToken) => {
       currentGetToken = next;
     };
@@ -60,7 +65,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const baseUrl = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
       const api = createApiClient({
         baseUrl,
-        getToken: (options) => currentGetToken(options),
+        getToken: (options) =>
+          currentGetToken(withClerkTokenTemplate(options, tokenConfig)),
       });
       return { controller: new SubscriptionController(api), error: null, updateGetToken };
     } catch (error) {

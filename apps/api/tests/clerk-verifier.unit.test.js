@@ -117,6 +117,18 @@ test('configuration requires explicit live policy inputs and keeps profile secre
     assert.throws(() => createClerkVerifierConfig({}), /CLERK_JWKS_URL/);
 });
 
+test('configuration normalizes a Clerk domain URL to the default JWKS endpoint', () => {
+    const verified = createClerkVerifierConfig({
+        ...configSource,
+        CLERK_JWKS_URL: 'https://clerk.example.test',
+    });
+
+    assert.equal(
+        verified.jwksUrl.toString(),
+        'https://clerk.example.test/.well-known/jwks.json',
+    );
+});
+
 test('configuration rejects whitespace, unsafe JWKS URLs, empty list entries, and out-of-range numbers', () => {
     for (const CLERK_JWKS_URL of [
         'https://user:password@clerk.example.test/.well-known/jwks.json',

@@ -56,6 +56,10 @@ export const createClerkVerifierConfig = (source = process.env) => {
         throw new Error('CLERK_JWKS_URL must be a credential-free HTTPS URL without a fragment');
     }
 
+    if (parsedJwksUrl.pathname === '/' && !parsedJwksUrl.search) {
+        parsedJwksUrl.pathname = '/.well-known/jwks.json';
+    }
+
     const authorizedPartyPolicy = required(
         source.CLERK_AUTHORIZED_PARTY_POLICY,
         'CLERK_AUTHORIZED_PARTY_POLICY',

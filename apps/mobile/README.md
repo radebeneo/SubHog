@@ -16,6 +16,16 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm run start --workspace=@subhog/mobile
    ```
 
+3. Configure public environment variables in `apps/mobile/.env` (or your EAS
+   environment):
+
+   ```env
+   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_REPLACE_ME
+   EXPO_PUBLIC_API_BASE_URL=https://api.example.test/api/v1
+   # Set when the API verifies a Clerk audience claim via a JWT template.
+   EXPO_PUBLIC_CLERK_TOKEN_TEMPLATE=subhog-api
+   ```
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
