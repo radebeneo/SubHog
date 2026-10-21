@@ -5,9 +5,11 @@ export type ClerkTokenConfig = {
 };
 
 export function resolveClerkTokenConfig(
-  env: Partial<Record<string, string | undefined>> = process.env,
+  env?: Partial<Record<string, string | undefined>>,
 ): ClerkTokenConfig {
-  const template = env.EXPO_PUBLIC_CLERK_TOKEN_TEMPLATE?.trim() || undefined;
+  const template = (
+    env ? env.EXPO_PUBLIC_CLERK_TOKEN_TEMPLATE : process.env.EXPO_PUBLIC_CLERK_TOKEN_TEMPLATE
+  )?.trim() || undefined;
   return { template };
 }
 

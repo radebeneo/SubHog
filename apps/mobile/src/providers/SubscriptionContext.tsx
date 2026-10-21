@@ -125,6 +125,48 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return () => controller?.dispose();
   }, [setup.controller]);
 
+  useEffect(() => {
+  if (!__DEV__ || !isLoaded || !isSignedIn) return;
+
+  void (async () => {
+    const token = await getToken(
+      withClerkTokenTemplate(
+        { skipCache: true },
+        resolveClerkTokenConfig(),
+      ),
+    );
+    const payload = token?.split(".")[1];
+    if (!payload) {
+      console.log("Clerk diagnostic: no JWT returned");
+      return;
+    }
+
+    const base64 = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(base64)) as {
+      iss?: string;
+      aud?: string | string[];
+      azp?: string;
+      sub?: string;
+      exp?: number;
+    };
+
+    console.log("Clerk JWT claims:", {
+      iss: claims.iss,
+      aud: claims.aud,
+      azp: claims.azp ?? "(absent)",
+      subMatchesSignedInUser: claims.sub === userId,
+      expiresAt: claims.exp
+        ? new Date(claims.exp * 1000).toISOString()
+        : "(absent)",
+    });
+  })().catch(() => {
+    console.warn("Clerk diagnostic: token could not be inspected");
+  });
+}, [getToken, isLoaded, isSignedIn, userId]);
+
   const subscriptions = useMemo(
     () =>
       state.status === "ready"
