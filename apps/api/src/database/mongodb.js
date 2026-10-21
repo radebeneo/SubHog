@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
-import { DB_URI, NODE_ENV } from '../config/env.js';
+import { DB_URI, DB_NAME, NODE_ENV } from '../config/env.js';
 
-export const MONGOOSE_CONNECTION_OPTIONS = { autoIndex: false };
+export const MONGOOSE_CONNECTION_OPTIONS = {
+    autoIndex: false,
+    ...(DB_NAME ? { dbName: DB_NAME } : {}),
+};
 
 if(!DB_URI) {
     throw new Error('Please define the MONGODB_URI environment variable inside .env.<development/production>.local');
