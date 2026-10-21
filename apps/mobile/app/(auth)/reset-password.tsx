@@ -1,6 +1,11 @@
 import { posthog } from "@/adapters/posthog";
 import images from "@/config/images";
-import { getAuthErrorMessage } from "@/features/auth/auth-state";
+import {
+  PASSWORD_MIN_LENGTH,
+  getAuthErrorMessage,
+  isClerkFormValidationError,
+  isValidPassword,
+} from "@/features/auth/auth-state";
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
 import { styled } from "nativewind";
@@ -34,11 +39,11 @@ export default function ResetPassword() {
   const isFetching = fetchStatus === "fetching";
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim());
   const passwordValid =
-    password.length >= 8 && password === confirmPassword;
+    isValidPassword(password) && password === confirmPassword;
 
   const reportError = (error: unknown, fallback?: string) => {
     setMessage(getAuthErrorMessage(error, fallback));
-    if (error) {
+    if (error && !isClerkFormValidationError(error)) {
       posthog?.captureException(error, { auth_flow: "password_recovery" });
     }
   };
@@ -266,7 +271,7 @@ export default function ResetPassword() {
                         onChangeText={setPassword}
                         autoComplete="password-new"
                         secureTextEntry
-                        placeholder="Minimum 8 characters"
+                        placeholder={`Minimum ${PASSWORD_MIN_LENGTH} characters`}
                         placeholderTextColor="rgba(0, 0, 0, 0.4)"
                       />
                     </View>
