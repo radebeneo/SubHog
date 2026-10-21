@@ -44,6 +44,7 @@ const backendErrorKinds: Record<ApiErrorCode, ApiErrorKind> = {
   IDENTITY_CONFLICT: "conflict",
   PROFILE_EMAIL_UNVERIFIED: "validation",
   PROFILE_INCOMPLETE: "validation",
+  PROVISIONING_DISABLED: "server",
   PROVISIONING_FAILED: "server",
   IDENTITY_NOT_PROVISIONED: "authorization",
   INVALID_USER_ID: "validation",

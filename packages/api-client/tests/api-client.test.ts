@@ -116,6 +116,21 @@ test("validates identity, provisioning, and complete subscription list DTOs", as
   );
 });
 
+test("reports disabled provisioning as a non-ambiguous server error", async () => {
+  const { client, requests } = createClient([
+    errorFixture(404, "PROVISIONING_DISABLED", "Account setup is unavailable"),
+  ]);
+  await assert.rejects(client.provisionIdentity(), (error: ApiError) => {
+    assert.equal(error.code, "PROVISIONING_DISABLED");
+    assert.equal(error.kind, "server");
+    assert.equal(error.status, 404);
+    assert.equal(error.retryable, false);
+    assert.equal(error.message, "Account setup is unavailable");
+    return true;
+  });
+  assert.equal(requests.length, 1);
+});
+
 test("uses the subscription detail, create, update, cancel, and upcoming routes", async () => {
   const updatedSubscription = {
     ...subscriptionFixture,

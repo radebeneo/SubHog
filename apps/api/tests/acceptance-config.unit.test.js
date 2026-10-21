@@ -89,7 +89,13 @@ test('disabled provisioning route is unavailable while identity reads remain reg
 
     try {
         assert.equal((await fetch(baseUrl)).status, 200);
-        assert.equal((await fetch(`${baseUrl}/provision`, { method: 'POST' })).status, 404);
+        const disabled = await fetch(`${baseUrl}/provision`, { method: 'POST' });
+        assert.equal(disabled.status, 404);
+        assert.deepEqual(await disabled.json(), {
+            success: false,
+            code: 'PROVISIONING_DISABLED',
+            message: 'Account setup is unavailable because identity provisioning is disabled on the API',
+        });
         assert.equal((await fetch(baseUrl, { method: 'DELETE' })).status, 204);
         assert.equal(identityReads, 1);
         assert.equal(provisioningWrites, 0);

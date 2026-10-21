@@ -114,6 +114,8 @@ export const createClerkVerifier = (config, { jwks } = {}) => {
                 throw invalidCredential();
             }
 
+            if (process.env.NODE_ENV === 'development') { console.info('Clerk JWT verified; azp present:', payload.azp !== undefined);}
+            
             if (config.authorizedPartyPolicy === 'required'
                 && (typeof payload.azp !== 'string' || !config.authorizedParties.includes(payload.azp))) {
                 throw invalidCredential();
