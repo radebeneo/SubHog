@@ -7,6 +7,16 @@ monitor, manage, and understand their recurring subscriptions. Users sign up, ad
 subscriptions with billing details, and get a clear view of their total monthly spend, upcoming
 renewals, and per-category spending insights — all from a clean, warm-toned mobile UI.
 
+## Current Implementation (2026-10-22)
+
+Clerk handles real authentication. The subscription API integration is read-only
+and optional while no backend is deployed. With `EXPO_PUBLIC_API_BASE_URL` unset
+or blank, signed-in tabs show empty data and a backend-not-connected notice,
+without API calls or fabricated profiles. Local subscription persistence and
+add/edit/delete are not implemented in this mode; the goals below describe the
+target product rather than completed functionality. A configured backend remains
+authoritative for identity association and subscription reads.
+
 ## Goals
 
 1. A signed-in user can add, view, and delete subscriptions in under 30 seconds each

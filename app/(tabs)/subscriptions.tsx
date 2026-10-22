@@ -1,3 +1,4 @@
+import BackendNotice from "@/components/BackendNotice";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionStateView from "@/components/SubscriptionStateView";
 import { useSubscriptions } from "@/context/SubscriptionContext";
@@ -23,7 +24,7 @@ const Subscriptions = () => {
   >(null);
   const { state, subscriptions: allSubscriptions } = useSubscriptions();
 
-  if (state.status !== "ready") {
+  if (state.status !== "ready" && state.status !== "backend-unconfigured") {
     return <SubscriptionStateView />;
   }
 
@@ -49,6 +50,7 @@ const Subscriptions = () => {
         <Text className="mb-5 text-3xl font-sans-bold text-primary">
           Subscriptions
         </Text>
+        <BackendNotice />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}

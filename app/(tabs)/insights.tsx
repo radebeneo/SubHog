@@ -1,3 +1,4 @@
+import BackendNotice from "@/components/BackendNotice";
 import SubscriptionIcon from "@/components/SubscriptionIcon";
 import SubscriptionStateView from "@/components/SubscriptionStateView";
 import { useSubscriptions } from "@/context/SubscriptionContext";
@@ -12,7 +13,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 const Insights = () => {
   const { state, subscriptions } = useSubscriptions();
 
-  if (state.status !== "ready") {
+  if (state.status !== "ready" && state.status !== "backend-unconfigured") {
     return <SubscriptionStateView />;
   }
 
@@ -58,6 +59,8 @@ const Insights = () => {
         <Text className="mb-5 text-base font-sans-medium text-muted-foreground">
           Amounts stay separated by currency and billing frequency.
         </Text>
+
+        <BackendNotice />
 
         <View className="rounded-bl-4xl rounded-tr-4xl bg-primary p-6">
           <Text className="text-sm font-sans-semibold text-white/70">

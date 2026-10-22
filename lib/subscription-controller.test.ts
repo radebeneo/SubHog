@@ -46,6 +46,49 @@ function mockApi(overrides: Partial<SubscriptionApi> = {}) {
   return { api, calls };
 }
 
+test("no backend preserves auth gating without fabricating identity or subscription data", async () => {
+  const controller = new SubscriptionController(null);
+  assert.deepEqual(controller.getState(), { status: "authentication-loading" });
+
+  await controller.retry();
+  await controller.provision();
+  assert.deepEqual(controller.getState(), { status: "authentication-loading" });
+
+  controller.updateAuth({ status: "signed-out" });
+  assert.deepEqual(controller.getState(), { status: "signed-out" });
+
+  const auth = {
+    status: "signed-in",
+    userId: "clerk-user",
+    sessionId: "session-one",
+  } as const;
+  controller.updateAuth(auth);
+  const state = controller.getState();
+  assert.deepEqual(state, { status: "backend-unconfigured" });
+
+  controller.updateAuth(auth);
+  await controller.retry();
+  await controller.provision();
+  await tick();
+  assert.strictEqual(controller.getState(), state);
+
+  controller.updateAuth({ ...auth, sessionId: "session-two" });
+  assert.notStrictEqual(controller.getState(), state);
+  assert.deepEqual(controller.getState(), { status: "backend-unconfigured" });
+
+  controller.updateAuth({ ...auth, userId: "another-clerk-user" });
+  assert.deepEqual(controller.getState(), { status: "backend-unconfigured" });
+
+  controller.updateAuth({ status: "loading" });
+  assert.deepEqual(controller.getState(), { status: "authentication-loading" });
+
+  controller.updateAuth(auth);
+  controller.updateAuth({ status: "signed-out" });
+  await tick();
+  assert.deepEqual(controller.getState(), { status: "signed-out" });
+  controller.dispose();
+});
+
 test("does not request before auth readiness or while signed out", async () => {
   const { api, calls } = mockApi();
   const controller = new SubscriptionController(api);

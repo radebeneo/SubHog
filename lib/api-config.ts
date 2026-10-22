@@ -1,7 +1,7 @@
-export function resolveApiBaseUrl(value: string | undefined): string {
+export function resolveApiBaseUrl(value: string | undefined): string | null {
   const candidate = value?.trim();
   if (!candidate) {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL is required");
+    return null;
   }
 
   let url: URL;

@@ -25,6 +25,22 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Running without a backend
+
+Clerk authentication requires `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. The subscription
+backend is optional: leave `EXPO_PUBLIC_API_BASE_URL` unset or blank in `.env` until
+a backend is deployed.
+
+After signing in, Home, Subscriptions, and Insights show their existing layouts
+with empty data and a "Backend not connected" notice. Settings and sign-out remain
+available. This mode does not create an API profile, load sample subscriptions, or
+save subscriptions locally; add/edit/delete remain unavailable.
+
+When a backend is ready, set `EXPO_PUBLIC_API_BASE_URL` to its public URL ending in
+`/api/v1`, then restart Expo. This enables the existing authenticated API flow.
+Invalid configured URLs and API request failures still display errors rather than
+silently switching to empty data. Never put backend secrets in public Expo values.
+
 ## Get a fresh project
 
 When you're ready, run:

@@ -3,8 +3,13 @@ import test from "node:test";
 
 import { resolveApiBaseUrl } from "./api-config.ts";
 
-test("requires an explicit valid public API URL", () => {
-  assert.throws(() => resolveApiBaseUrl(undefined), /required/);
+test("allows an unset or blank URL when no backend is connected", () => {
+  assert.equal(resolveApiBaseUrl(undefined), null);
+  assert.equal(resolveApiBaseUrl(""), null);
+  assert.equal(resolveApiBaseUrl("   "), null);
+});
+
+test("validates an explicitly configured public API URL", () => {
   assert.throws(() => resolveApiBaseUrl("not a url"), /valid HTTP/);
   assert.throws(() => resolveApiBaseUrl("file:///tmp/api"), /valid HTTP/);
   assert.throws(

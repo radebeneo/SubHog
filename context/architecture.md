@@ -9,7 +9,7 @@
 | Routing    | Expo Router 57 (file-based)          | Navigation — tabs, stack, dynamic routes                             |
 | Styling    | NativeWind 5 (Tailwind CSS v4)       | Utility-first styling with design token system in `global.css`       |
 | State      | React Context + external-store controller | Session-scoped subscription read state; no external state manager |
-| Storage    | API + Clerk secure token cache       | Remote subscriptions and persisted Clerk session                     |
+| Storage    | Optional API + Clerk secure token cache | Remote subscriptions when configured; persisted Clerk session       |
 | Auth       | Clerk Expo                           | Email/password UI backed by the active Clerk session                  |
 | Icons      | @expo/vector-icons (Ionicons)        | Tab bar and UI icons                                                 |
 | Navigation | @react-navigation/bottom-tabs        | Tab navigator rendered by Expo Router                                |
@@ -27,7 +27,8 @@
 
 ## Storage Model
 
-- **Remote API**: Owns API identity associations and subscription records.
+- **Optional remote API**: Owns API identity associations and subscription records when `EXPO_PUBLIC_API_BASE_URL` is configured. An unset or blank URL selects a backend-unconfigured state after Clerk sign-in: existing tabs render with empty subscription data, without API calls, fabricated API identities, sample records, or local mutations. This is not persistent local subscription storage.
+- Invalid configured URLs remain configuration failures. A configured backend's request failures never silently fall back to empty data.
 - **Clerk secure token cache**: Persists the active authentication session; bearer credentials are not copied into application state or storage.
 - **React Context (in-memory)**: Exposes session-scoped identity, provisioning, subscription-read state, and DTO display adapters.
 

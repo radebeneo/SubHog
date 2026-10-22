@@ -26,7 +26,8 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- API-04 route migration and live Clerk/API configuration validation remain external gates
+- API-04 route migration and live Clerk/API configuration validation remain external gates for remote subscription reads.
+- Manual device acceptance: restart Expo with no API URL, sign in, verify Home/Subscriptions/Insights show empty data with the backend notice, then verify Settings/sign-out.
 
 ## Completed
 
@@ -49,6 +50,17 @@ Update this file after every meaningful implementation change.
 - Isolated orchestration tests cover auth readiness, provisioning, stale work, contracted failures, DTO edge cases, fixture absence, and token-safe errors
 - EXPO-03 closeout coverage asserts immediate session-data removal, stale resolve/reject isolation, no stale follow-on requests, unchanged-auth idempotence, and preserved transport failure classification
 - INT-01B preparation strengthens sign-out coverage against stale follow-on list requests and requires the public API base URL to contain the canonical `/api/v1` path exactly once
+
+### Backend-Unconfigured Startup Fix (2026-10-22)
+
+- An unset or blank `EXPO_PUBLIC_API_BASE_URL` no longer blocks signed-in tabs. The provider does not create an API client in this mode.
+- The controller exposes `backend-unconfigured` only after Clerk sign-in, without fabricated API identity or subscription data; retry/provision are no-ops.
+- Home, Subscriptions, and Insights retain their layouts with empty data and a shared backend-not-connected notice. No local persistence or subscription mutations were added.
+- Configured URLs still undergo strict validation; actual backend failures keep their existing error/retry behavior.
+- `.env.example`, README, architecture, and project overview distinguish this limited no-backend mode from future local-storage goals.
+- Added a CSS module declaration for TypeScript 6 side-effect imports without modifying the generated NativeWind declarations.
+- Validation: all 47 API/config/controller tests pass; app and API typechecks pass; lint has no errors and the two pre-existing `clsx` import warnings.
+- Initial iOS export timed out after Metro startup; the retry with two workers completed successfully. Bundle validation passed; no device runtime acceptance is claimed.
 
 ## Next Up
 

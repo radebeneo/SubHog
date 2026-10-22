@@ -1,3 +1,4 @@
+import BackendNotice from "@/components/BackendNotice";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionStateView from "@/components/SubscriptionStateView";
@@ -24,7 +25,7 @@ export default function App() {
   const displayName =
     user?.firstName || user?.emailAddresses[0]?.emailAddress || "Subscriber";
 
-  if (state.status !== "ready") {
+  if (state.status !== "ready" && state.status !== "backend-unconfigured") {
     return <SubscriptionStateView />;
   }
 
@@ -58,13 +59,17 @@ export default function App() {
               </Text>
             </View>
 
+            <BackendNotice />
+
             <View className="home-balance-card">
               <Text className="home-balance-label">Active subscriptions</Text>
               <View className="home-balance-row">
                 <Text className="home-balance-amount">
                   {activeSubscriptions.length}
                 </Text>
-                <Text className="home-balance-date">API backed</Text>
+                <Text className="home-balance-date">
+                  {state.status === "backend-unconfigured" ? "Not connected" : "API backed"}
+                </Text>
               </View>
             </View>
 

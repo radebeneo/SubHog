@@ -24,6 +24,7 @@ export interface SubscriptionFailure {
 export type SubscriptionState =
   | { status: "authentication-loading" }
   | { status: "signed-out" }
+  | { status: "backend-unconfigured" }
   | { status: "resolving-identity" }
   | { status: "unprovisioned"; identity: IdentityDto }
   | { status: "provisioning"; identity: IdentityDto }
@@ -56,7 +57,7 @@ export interface SubscriptionApi {
 type Listener = () => void;
 
 export class SubscriptionController {
-  private readonly api: SubscriptionApi;
+  private readonly api: SubscriptionApi | null;
   private state: SubscriptionState = { status: "authentication-loading" };
   private readonly listeners = new Set<Listener>();
   private generation = 0;
@@ -65,7 +66,7 @@ export class SubscriptionController {
   private scope: RequestSessionScope | null = null;
   private provisioning: Promise<void> | null = null;
 
-  constructor(api: SubscriptionApi) {
+  constructor(api: SubscriptionApi | null) {
     this.api = api;
   }
 
@@ -100,11 +101,15 @@ export class SubscriptionController {
     this.sessionKey = nextKey;
     this.clerkUserId = auth.userId;
     this.scope = new RequestSessionScope();
+    if (!this.api) {
+      this.setState({ status: "backend-unconfigured" });
+      return;
+    }
     void this.resolveIdentity();
   }
 
   retry = async (): Promise<void> => {
-    if (!this.scope?.isCurrent()) return;
+    if (!this.api || !this.scope?.isCurrent()) return;
     if (
       this.state.status === "error" &&
       this.state.failure.operation === "subscriptions" &&
@@ -120,6 +125,7 @@ export class SubscriptionController {
   };
 
   provision = (): Promise<void> => {
+    if (!this.api) return Promise.resolve();
     if (this.provisioning) return this.provisioning;
     const identity =
       this.state.status === "unprovisioned"
@@ -170,7 +176,7 @@ export class SubscriptionController {
 
   private async resolveIdentity(): Promise<void> {
     const scope = this.scope;
-    if (!scope?.isCurrent()) return;
+    if (!this.api || !scope?.isCurrent()) return;
     const generation = this.generation;
     this.setState({ status: "resolving-identity" });
     try {
@@ -194,7 +200,7 @@ export class SubscriptionController {
     generation = this.generation,
   ): Promise<void> {
     const scope = this.scope;
-    if (!scope?.isCurrent() || generation !== this.generation) return;
+    if (!this.api || !scope?.isCurrent() || generation !== this.generation) return;
     this.setState({ status: "loading-subscriptions", identity });
     try {
       const subscriptions = await this.api.listSubscriptions(apiUserId, { scope });

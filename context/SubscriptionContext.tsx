@@ -33,10 +33,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const setup = useMemo(() => {
     try {
       const baseUrl = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
-      const api = createApiClient({
-        baseUrl,
-        getToken: (options) => getToken(options),
-      });
+      const api = baseUrl
+        ? createApiClient({
+            baseUrl,
+            getToken: (options) => getToken(options),
+          })
+        : null;
       return { controller: new SubscriptionController(api), error: null };
     } catch (error) {
       return {
