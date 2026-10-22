@@ -13,6 +13,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -30,13 +32,21 @@ const noopAction = async () => undefined;
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { getToken, isLoaded, isSignedIn, sessionId, userId } = useAuth();
-  const setup = useMemo(() => {
+  const getTokenRef = useRef(getToken);
+
+  // Clerk can return a new getter on every render. Keep it current without
+  // recreating the controller or restarting session-scoped requests.
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
+
+  const [setup] = useState(() => {
     try {
       const baseUrl = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
       const api = baseUrl
         ? createApiClient({
             baseUrl,
-            getToken: (options) => getToken(options),
+            getToken: (options) => getTokenRef.current(options),
           })
         : null;
       return { controller: new SubscriptionController(api), error: null };
@@ -48,7 +58,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         ),
       };
     }
-  }, [getToken]);
+  });
 
   const state = useSyncExternalStore(
     setup.controller?.subscribe ?? noopSubscribe,

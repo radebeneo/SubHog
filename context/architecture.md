@@ -36,6 +36,7 @@
 
 - Clerk is the authentication authority and exposes the active user and session IDs.
 - Authenticated API reads start only after Clerk is loaded with an active session.
+- Subscription provider setup is stable for each mount. Clerk token-getter changes update a ref before auth synchronization rather than recreating the controller; user/session changes remain responsible for invalidating authenticated work.
 - `GET /identity` resolves the API user; the Clerk subject is never used as the subscription owner ID.
 - Provisioning is an explicit user action through `POST /identity/provision`.
 - Subscription create, update, and delete remain outside the integrated client slice.

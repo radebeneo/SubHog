@@ -62,6 +62,14 @@ Update this file after every meaningful implementation change.
 - Validation: all 47 API/config/controller tests pass; app and API typechecks pass; lint has no errors and the two pre-existing `clsx` import warnings.
 - Initial iOS export timed out after Metro startup; the retry with two workers completed successfully. Bundle validation passed; no device runtime acceptance is claimed.
 
+### Subscription Provider Render-Loop Fix (2026-10-22)
+
+- Fixed the maximum-update-depth loop: Clerk Expo creates a new `getToken` wrapper on every render, which previously recreated the subscription controller through `useMemo([getToken])`.
+- The provider now uses a lazy state initializer for stable setup and updates a token-getter ref in an effect before auth synchronization. API calls use the latest committed getter without restarting the controller.
+- Existing auth/session invalidation, backend-unconfigured behavior, configuration failures, retry, and provisioning remain unchanged. No dependencies or UI changes were added.
+- Validation: all 47 API/config/controller tests pass; `npm run typecheck` and `npm run typecheck:api` pass; lint reports no errors and the two pre-existing `clsx` import warnings.
+- Manual device acceptance remains pending: fully reload Expo, sign in with no API URL, navigate the tabs, and verify Settings/sign-out without the update-depth error.
+
 ## Next Up
 
 1. Complete API-04 migration of `GET /api/v1/subscriptions/user/:id`
