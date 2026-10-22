@@ -1,9 +1,7 @@
-import BackendNotice from "@/components/BackendNotice";
 import SubscriptionCard from "@/components/SubscriptionCard";
-import SubscriptionStateView from "@/components/SubscriptionStateView";
+import { colors, spacing } from "@/constants/theme";
 import { useSubscriptions } from "@/context/SubscriptionContext";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
-import { styled } from "nativewind";
 import { useState } from "react";
 import {
     FlatList,
@@ -13,20 +11,14 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-
-const SafeAreaView = styled(RNSafeAreaView);
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Subscriptions = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const { state, subscriptions: allSubscriptions } = useSubscriptions();
-
-  if (state.status !== "ready" && state.status !== "backend-unconfigured") {
-    return <SubscriptionStateView />;
-  }
+  const { subscriptions: allSubscriptions } = useSubscriptions();
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const subscriptions = allSubscriptions.filter((subscription) => {
@@ -42,7 +34,9 @@ const Subscriptions = () => {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-background p-5">
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background, padding: spacing[5] }}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -50,7 +44,6 @@ const Subscriptions = () => {
         <Text className="mb-5 text-3xl font-sans-bold text-primary">
           Subscriptions
         </Text>
-        <BackendNotice />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}

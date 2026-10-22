@@ -9,13 +9,14 @@ renewals, and per-category spending insights — all from a clean, warm-toned mo
 
 ## Current Implementation (2026-10-22)
 
-Clerk handles real authentication. The subscription API integration is read-only
-and optional while no backend is deployed. With `EXPO_PUBLIC_API_BASE_URL` unset
-or blank, signed-in tabs show empty data and a backend-not-connected notice,
-without API calls or fabricated profiles. Local subscription persistence and
-add/edit/delete are not implemented in this mode; the goals below describe the
-target product rather than completed functionality. A configured backend remains
-authoritative for identity association and subscription reads.
+Clerk handles real authentication. Subscription screens use the original frontend
+demo: hardcoded sample records and a shared in-memory `SubscriptionContext`.
+The Home add button opens the existing modal; new subscriptions appear immediately
+on Home, Subscriptions, and Monthly Insights. The Balance and Upcoming cards use
+the original demo values. No subscription API calls or backend configuration are
+required, even if `EXPO_PUBLIC_API_BASE_URL` is set. Added records reset when the
+provider unmounts or the app restarts; persistence and edit/delete remain future
+work. API helpers and contract tests are retained but disconnected from the app.
 
 ## Goals
 

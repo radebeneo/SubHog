@@ -4,11 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- EXPO-03 Session-Aware Identity and Subscription Reads
+- Frontend-only demo restoration
 
 ## Current Goal
 
-- Maintain explicit Clerk session-scoped identity, provisioning, and owned-subscription read state
+- Restore the original sample-data UI and in-memory add-subscription flow without subscription API requirements.
+- The current restoration supersedes the historical EXPO-03 integration notes below; API groundwork remains disconnected.
 
 ## Completed
 
@@ -26,8 +27,8 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- API-04 route migration and live Clerk/API configuration validation remain external gates for remote subscription reads.
-- Manual device acceptance: restart Expo with no API URL, sign in, verify Home/Subscriptions/Insights show empty data with the backend notice, then verify Settings/sign-out.
+- Manual device acceptance: reload Expo, sign in, verify demo Balance/Upcoming/sample subscriptions without backend notices; add a subscription, search for it on Subscriptions, check Monthly Insights, and sign out.
+- Durable local storage and subscription edit/delete remain future work, not part of this restoration.
 
 ## Completed
 
@@ -70,11 +71,22 @@ Update this file after every meaningful implementation change.
 - Validation: all 47 API/config/controller tests pass; `npm run typecheck` and `npm run typecheck:api` pass; lint reports no errors and the two pre-existing `clsx` import warnings.
 - Manual device acceptance remains pending: fully reload Expo, sign in with no API URL, navigate the tabs, and verify Settings/sign-out without the update-depth error.
 
+### Frontend-Only Restoration (2026-10-22)
+
+- Restored the original sample records, demo Balance and Upcoming values from the frontend before API integration.
+- Replaced the active API-backed subscription provider with typed React Context and in-memory additions.
+- Restored the Home add button and existing modal, searchable subscription list, and Monthly Insights totals/category breakdown.
+- Removed backend notice and API state-view components and all subscription-screen API gating, including Read only / Not connected labels.
+- Kept Expo 57, real Clerk authentication, startup fixes, sanitized analytics, API helpers, and existing contract tests. No dependencies, assets, or design tokens changed.
+- Updated README, environment example, architecture, and overview to explicitly describe the non-persistent demo and disconnected API groundwork.
+- Validation: app/API typechecks pass; all 47 retained API/config/controller tests pass; lint has zero errors and the two pre-existing clsx import warnings; iOS export succeeds with two Metro workers; git diff --check passes.
+- Source verification finds no backend notices, API gating, or API imports in app routes. Device runtime acceptance is not claimed; the CM review panel was unavailable.
+
 ## Next Up
 
-1. Complete API-04 migration of `GET /api/v1/subscriptions/user/:id`
-2. Verify the ordinary Clerk session-token claim policy and live public API base URL
-3. Run live end-to-end acceptance only after the backend and credential configuration gates are complete
+1. Complete the frontend demo device acceptance checklist above.
+2. Decide whether to add durable local storage in a separate feature.
+3. Reconnect API integration only when explicitly requested.
 
 ## Open Questions
 
@@ -87,9 +99,9 @@ Update this file after every meaningful implementation change.
 ## Architecture Decisions
 
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
-- Clerk is the active authentication authority; API requests use its ordinary active-session token
-- The remote API is authoritative for identity association and owned subscription reads
-- Subscription mutations remain disabled in integrated mode until separately contracted
+- Clerk remains the active authentication authority; the restored subscription demo makes no API requests.
+- SubscriptionContext is the in-memory source of truth, initialized with original sample records.
+- Additions are local only and reset on unmount/restart; persistence and edit/delete remain future work.
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
 
@@ -98,5 +110,5 @@ Update this file after every meaningful implementation change.
 - The project name is **SubHog** (`app.json` slug: `SubHog`)
 - The color theme is warm: cream background (`#fff9e3`), deep navy text (`#081126`), burnt-orange accent (`#ea7a53`)
 - `global.css` is imported in `app/(tabs)/index.tsx` — confirm it is also imported in `app/_layout.tsx` (it currently is)
-- All screen files in `app/(tabs)/` are currently placeholder stubs — they need full implementation
+- Home, Subscriptions, and Monthly Insights use the restored frontend demo; Settings retains real Clerk sign-out.
 - Expo is running in dev mode (`npx expo start`) — test changes with Expo Go on device
