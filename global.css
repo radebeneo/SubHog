@@ -283,6 +283,10 @@
         @apply mb-7 flex-row items-center gap-3;
     }
 
+    .auth-brand__logo {
+        @apply size-16;
+    }
+
     .auth-logo-mark {
         @apply relative size-14 items-center justify-center rounded-2xl bg-accent;
     }
@@ -369,6 +373,26 @@
 
     .auth-divider-text {
         @apply text-[11px] font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
+    }
+
+    .auth-social {
+        @apply mt-2;
+    }
+
+    .auth-social__buttons {
+        @apply flex-row items-center justify-center gap-6;
+    }
+
+    .auth-social__button {
+        @apply size-14 items-center justify-center rounded-full bg-transparent;
+    }
+
+    .auth-social__button--disabled {
+        @apply opacity-45;
+    }
+
+    .auth-social__error {
+        @apply mt-2 text-center text-xs font-sans-medium text-destructive;
     }
 
     .auth-link-row {

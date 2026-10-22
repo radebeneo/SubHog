@@ -1,3 +1,4 @@
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import images from "@/constants/images";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useAuth, useSignUp } from "@clerk/expo";
@@ -28,6 +29,8 @@ const SignUp = () => {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [socialBusy, setSocialBusy] = useState(false);
+  const authBusy = fetchStatus === "fetching" || socialBusy;
 
   // Validation states
   const [firstNameTouched, setFirstNameTouched] = useState(false);
@@ -50,7 +53,7 @@ const SignUp = () => {
     emailValid;
 
   const handleSubmit = async () => {
-    if (!formValid) return;
+    if (!formValid || authBusy) return;
 
     const { error } = await signUp.password({
       firstName: firstName.trim(),
@@ -137,7 +140,12 @@ const SignUp = () => {
               <View className="auth-brand-block">
                 <View className="auth-logo-wrap">
                   <View>
-                    <Image className="home-avatar" source={images.favicon} />
+                    <Image
+                      className="auth-brand__logo"
+                      source={images.subhogLogo}
+                      resizeMode="contain"
+                      accessible={false}
+                    />
                   </View>
                   <View>
                     <Text className="auth-wordmark">SubHog</Text>
@@ -219,7 +227,12 @@ const SignUp = () => {
             <View className="auth-brand-block">
               <View className="auth-logo-wrap">
                 <View>
-                  <Image className="home-avatar" source={images.favicon} />
+                  <Image
+                    className="auth-brand__logo"
+                    source={images.subhogLogo}
+                    resizeMode="contain"
+                    accessible={false}
+                  />
                 </View>
                 <View>
                   <Text className="auth-wordmark">SubHog</Text>
@@ -328,9 +341,9 @@ const SignUp = () => {
                 </View>
 
                 <Pressable
-                  className={`auth-button ${(!formValid || fetchStatus === "fetching") && "auth-button-disabled"}`}
+                  className={`auth-button ${(!formValid || authBusy) && "auth-button-disabled"}`}
                   onPress={handleSubmit}
-                  disabled={!formValid || fetchStatus === "fetching"}
+                  disabled={!formValid || authBusy}
                 >
                   <Text className="auth-button-text">
                     {fetchStatus === "fetching"
@@ -340,6 +353,12 @@ const SignUp = () => {
                 </Pressable>
               </View>
             </View>
+
+            <SocialAuthButtons
+              mode="sign_up"
+              disabled={fetchStatus === "fetching"}
+              onBusyChange={setSocialBusy}
+            />
 
             {/* Sign-In Link */}
             <View className="auth-link-row">
