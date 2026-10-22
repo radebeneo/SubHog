@@ -1,6 +1,6 @@
+import { Image as ExpoImage } from "expo-image";
 import type { ImageSourcePropType } from "react-native";
 import { Image } from "react-native";
-import { SvgUri } from "react-native-svg";
 
 interface SubscriptionIconProps {
   source: ImageSourcePropType;
@@ -29,8 +29,17 @@ const SubscriptionIcon = ({
 }: SubscriptionIconProps) => {
   const uri = getRemoteUri(source);
 
-  if (uri?.endsWith(".svg")) {
-    return <SvgUri uri={uri} width={size} height={size} />;
+  if (uri && /\.svg(?:[?#]|$)/i.test(uri)) {
+    // Tint the rendered image so embedded fills and gradients also match
+    // the black monochrome icons, including previously saved Iconify URLs.
+    return (
+      <ExpoImage
+        source={{ uri }}
+        style={{ width: size, height: size }}
+        contentFit="contain"
+        tintColor="#000000"
+      />
+    );
   }
 
   return <Image source={source} className={className} />;
