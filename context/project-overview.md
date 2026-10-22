@@ -7,16 +7,19 @@ monitor, manage, and understand their recurring subscriptions. Users sign up, ad
 subscriptions with billing details, and get a clear view of their total monthly spend, upcoming
 renewals, and per-category spending insights — all from a clean, warm-toned mobile UI.
 
-## Current Implementation (2026-10-22)
+## Current Implementation (2026-10-23)
 
-Clerk handles real authentication. Subscription screens use the original frontend
-demo: hardcoded sample records and a shared in-memory `SubscriptionContext`.
-The Home add button opens the existing modal; new subscriptions appear immediately
-on Home, Subscriptions, and Monthly Insights. The Balance and Upcoming cards use
-the original demo values. No subscription API calls or backend configuration are
-required, even if `EXPO_PUBLIC_API_BASE_URL` is set. Added records reset when the
-provider unmounts or the app restarts; persistence and edit/delete remain future
-work. API helpers and contract tests are retained but disconnected from the app.
+Clerk handles real authentication. Subscription screens start empty and share an
+in-memory `SubscriptionContext`. The Home add button opens the existing modal;
+new subscriptions appear immediately on Home, Subscriptions, and Monthly Insights.
+Home shows active monthly spend (yearly prices divided by 12), the next renewal
+date, and upcoming cards sorted by next renewal. Past renewal dates advance to
+the next billing cycle for display, preserving their original monthly/yearly
+anchor. Due-today and tomorrow labels use local calendar days.
+The current add flow uses ZAR. No subscription API calls or backend configuration
+are required, even if `EXPO_PUBLIC_API_BASE_URL` is set. Added records reset when
+the provider unmounts or the app restarts; persistence and edit/delete remain
+future work. API helpers and contract tests are retained but disconnected.
 
 ## Goals
 

@@ -30,14 +30,18 @@ You can start developing by editing the files inside the **app** directory. This
 Clerk authentication requires `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Subscription
 screens do not require a backend or read `EXPO_PUBLIC_API_BASE_URL`.
 
-After signing in, Home shows the original demo Balance, Upcoming cards, and
-sample subscriptions. Tap the add button to create a subscription; it appears
-immediately on Home and Subscriptions and updates Monthly Insights. Search,
-card expansion, Settings, and sign-out remain available without backend notices.
+After signing in, Home starts empty. Tap the add button to create a subscription;
+it appears immediately on Home and Subscriptions and updates Monthly Insights.
+Home calculates active monthly spend (yearly prices divided by 12) and sorts
+Upcoming cards by the next billing date, advancing past dates by billing cycle.
+Countdowns refresh at midnight and when you return to Home or resume the app.
+Search, card expansion, Settings, and sign-out remain available.
 
-Subscriptions live in memory, as in the original frontend. Added records reset
-when the app restarts or you sign out; the Balance and Upcoming cards retain
-their original demo values. Persistence and edit/delete are not implemented.
+Subscriptions live in memory. Added records reset when the app restarts or you
+sign out. Persistence and edit/delete are not implemented.
+
+Run the Home calculation tests with:
+`node --experimental-strip-types --test lib/subscription-summary.test.ts`.
 The API helpers and contract tests remain in the repository as disconnected
 integration groundwork; setting an API URL does not enable them.
 

@@ -4,12 +4,23 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Frontend-only demo restoration
+- Dynamic Home dashboard
 
 ## Current Goal
 
-- Restore the original sample-data UI and in-memory add-subscription flow without subscription API requirements.
-- The current restoration supersedes the historical EXPO-03 integration notes below; API groundwork remains disconnected.
+- Start with an empty subscription list and derive Home monthly spend and Upcoming from user-added records.
+- User approved advancing past renewal dates to the next billing cycle.
+- Keep the existing in-memory shared state and disconnected API groundwork.
+
+### Dynamic Home (2026-10-23)
+
+- Added pure summary and anchored monthly/yearly recurrence helpers with focused calendar-edge tests.
+- SubscriptionContext now starts empty; Home reads live monthly spend, next renewal and sorted Upcoming cards from the shared list.
+- Added an actionable empty state and corrected tomorrow's countdown label; Upcoming cards accommodate real billing amounts and longer countdowns.
+- Added a focused hook to refresh calendar calculations on Home focus, app resume and midnight; no subscription records are mutated.
+- Validation: all 8 calendar tests pass, including a run in America/New_York for daylight-saving coverage; app typecheck passes; lint has zero errors and two pre-existing clsx import warnings; iOS production export passes with two Metro workers; git diff --check passes.
+- CM Browser navigation and subsequent snapshot returned unavailable, so interactive/device acceptance is not claimed. Expo dev server was started on port 8081 for manual verification.
+- Persistence and edit/delete remain separate future features.
 
 ## Completed
 
@@ -27,7 +38,7 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- Manual device acceptance: reload Expo, sign in, verify demo Balance/Upcoming/sample subscriptions without backend notices; add a subscription, search for it on Subscriptions, check Monthly Insights, and sign out.
+- Manual device acceptance: reload Expo, sign in, verify empty Home with R0.00 monthly spend and no next renewal; add monthly R120 and yearly R1200 subscriptions, confirm R220.00 monthly spend and sorted Upcoming cards with full billing prices; expand cards, check Subscriptions/Insights, and sign out.
 - Durable local storage and subscription edit/delete remain future work, not part of this restoration.
 
 ## Completed
@@ -100,7 +111,8 @@ Update this file after every meaningful implementation change.
 
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
 - Clerk remains the active authentication authority; the restored subscription demo makes no API requests.
-- SubscriptionContext is the in-memory source of truth, initialized with original sample records.
+- SubscriptionContext is the in-memory source of truth, initialized empty (user decision, 2026-10-23).
+- Home derives active monthly spend and next billing occurrences from that list; recurrence preserves the original renewal anchor.
 - Additions are local only and reset on unmount/restart; persistence and edit/delete remain future work.
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation

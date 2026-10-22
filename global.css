@@ -135,6 +135,26 @@
         @apply text-xl font-sans-medium text-white;
     }
 
+    .home-summary__row {
+        @apply flex-row flex-wrap items-end justify-between gap-3;
+    }
+
+    .home-summary__renewal {
+        @apply gap-1;
+    }
+
+    .home-summary__caption {
+        @apply text-sm font-sans-medium text-white/80;
+    }
+
+    .upcoming-card__copy {
+        @apply min-w-0 flex-1;
+    }
+
+    .upcoming-card--dynamic {
+        @apply w-64;
+    }
+
     .list-head {
         @apply my-5 flex-row items-center justify-between;
     }

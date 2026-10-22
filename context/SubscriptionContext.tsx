@@ -1,4 +1,3 @@
-import { HOME_SUBSCRIPTIONS } from "@/constants/data";
 import {
   createContext,
   useContext,
@@ -19,8 +18,7 @@ export function SubscriptionProvider({
 }: {
   children: ReactNode;
 }): ReactElement {
-  const [subscriptions, setSubscriptions] =
-    useState<Subscription[]>(HOME_SUBSCRIPTIONS);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   const addSubscription = (subscription: Subscription): void => {
     setSubscriptions((currentSubscriptions) => [

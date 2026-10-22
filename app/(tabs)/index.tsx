@@ -2,12 +2,12 @@ import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
-import { HOME_BALANCE, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import { colors, spacing } from "@/constants/theme";
 import { useSubscriptions } from "@/context/SubscriptionContext";
 import "@/global.css";
+import { useSubscriptionSummary } from "@/hooks/useSubscriptionSummary";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
@@ -21,6 +21,8 @@ export default function App() {
     string | null
   >(null);
   const { subscriptions, addSubscription } = useSubscriptions();
+  const { monthlySpend, nextRenewalDate, upcomingSubscriptions } =
+    useSubscriptionSummary();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const { user } = useUser();
   const displayName =
@@ -51,21 +53,26 @@ export default function App() {
             </View>
 
             <View className="home-balance-card">
-              <Text className="home-balance-label">Balance</Text>
-              <View className="home-balance-row">
+              <Text className="home-balance-label">Monthly spend</Text>
+              <View className="home-summary__row">
                 <Text className="home-balance-amount">
-                  {formatCurrency(HOME_BALANCE.amount)}
+                  {formatCurrency(monthlySpend)}
                 </Text>
-                <Text className="home-balance-date">
-                  {dayjs(HOME_BALANCE.nextRenewalDate).format("DD MMM")}
-                </Text>
+                <View className="home-summary__renewal">
+                  <Text className="home-summary__caption">Next renewal</Text>
+                  <Text className="home-balance-date">
+                    {nextRenewalDate
+                      ? dayjs(nextRenewalDate).format("DD MMM")
+                      : "None"}
+                  </Text>
+                </View>
               </View>
             </View>
 
             <View className="mb-5">
               <ListHeading title="Upcoming" />
               <FlatList
-                data={UPCOMING_SUBSCRIPTIONS}
+                data={upcomingSubscriptions}
                 horizontal
                 renderItem={({ item }) => (
                   <UpcomingSubscriptionCard {...item} />
@@ -73,9 +80,7 @@ export default function App() {
                 keyExtractor={(item) => item.id}
                 showsHorizontalScrollIndicator={false}
                 ListEmptyComponent={
-                  <Text className="home-empty-state">
-                    No upcoming renewals.
-                  </Text>
+                  <Text className="home-empty-state">No upcoming renewals.</Text>
                 }
               />
             </View>
@@ -105,7 +110,18 @@ export default function App() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text className="home-empty-state">No subscriptions found.</Text>
+          <View>
+            <Text className="home-empty-state">
+              No subscriptions yet. Add your first to start tracking your spending.
+            </Text>
+            <Pressable
+              className="auth-button"
+              accessibilityRole="button"
+              onPress={() => setIsCreateModalVisible(true)}
+            >
+              <Text className="auth-button-text">Add subscription</Text>
+            </Pressable>
+          </View>
         }
         extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}

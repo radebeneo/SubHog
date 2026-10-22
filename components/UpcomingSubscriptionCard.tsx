@@ -1,4 +1,5 @@
 import SubscriptionIcon from "@/components/SubscriptionIcon";
+import { formatRenewalCountdown } from "@/lib/subscription-summary";
 import { formatCurrency } from "@/lib/utils";
 import { Text, View } from "react-native";
 
@@ -10,15 +11,15 @@ const UpcomingSubscriptionCard = ({
   currency,
 }: UpcomingSubscription) => {
   return (
-    <View className="upcoming-card">
+    <View className="upcoming-card upcoming-card--dynamic">
       <View className="upcoming-row">
         <SubscriptionIcon source={icon} size={56} className="upcoming-icon" />
-        <View>
-          <Text className="upcoming-price">
+        <View className="upcoming-card__copy">
+          <Text className="upcoming-price" numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(price, currency)}
           </Text>
           <Text className="upcoming-meta" numberOfLines={1}>
-            {daysLeft > 1 ? `${daysLeft} days left` : "Due Today"}
+            {formatRenewalCountdown(daysLeft)}
           </Text>
         </View>
       </View>

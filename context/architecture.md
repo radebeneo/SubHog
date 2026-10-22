@@ -21,7 +21,9 @@
 - `app/_layout.tsx` — Root Stack, font/splash loading, Clerk, and optional analytics.
 - `context/SubscriptionContext.tsx` — Shared subscription list and `addSubscription`.
 - `context/*.md` — Project documentation alongside the context provider.
-- `constants/data.ts` — Original sample subscriptions, balance, upcoming cards, and tabs.
+- `constants/data.ts` — Tab definitions and unused legacy demo constants.
+- `lib/subscription-summary.ts` — Pure Home spend and renewal calculations.
+- `hooks/useSubscriptionSummary.ts` — Shared-state consumption and calendar refresh lifecycle for Home.
 - `components/CreateSubscriptionModal.tsx` — Existing form that creates an in-memory subscription.
 - `lib/api-*`, `lib/subscription-controller*`, and API contract docs — Retained integration groundwork, not imported by the active subscription screens or provider.
 - `global.css` — Design tokens and semantic NativeWind classes.
@@ -29,10 +31,12 @@
 
 ## Storage Model
 
-- The provider initializes its subscription list from `HOME_SUBSCRIPTIONS`.
+- The provider initializes with an empty subscription list; only user-added records appear.
 - New records are prepended using a functional state update and shared across tabs.
 - There is no subscription persistence or database. Records reset on provider unmount or app restart.
-- Home Balance and Upcoming display the original hardcoded demo values; Monthly Insights derives its totals and category breakdown from the shared subscription list.
+- Home monthly spend and Upcoming derive from active records in the shared subscription list through `lib/subscription-summary.ts`. Yearly costs are divided by 12; the current local flow uses ZAR.
+- Upcoming includes active records with valid renewal dates, sorted by their next occurrence. Past dates advance by whole billing cycles anchored to the original date (including month-end/leap-year clamping), without mutating stored records. Calendar-day countdowns refresh at midnight and when the app becomes active.
+- Monthly Insights derives its totals and category breakdown from the same shared subscription list.
 - `EXPO_PUBLIC_API_BASE_URL` is not read by the active app. No API client, identity provisioning, or subscription request is started.
 - Clerk's secure token cache continues to persist authentication; credentials are never copied into subscription state.
 
