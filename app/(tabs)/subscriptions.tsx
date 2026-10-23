@@ -2,12 +2,14 @@ import DeleteSubscriptionModal from "@/components/DeleteSubscriptionModal";
 import EditSubscriptionModal from "@/components/EditSubscriptionModal";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionDataNotice from "@/components/SubscriptionDataNotice";
+import images from "@/constants/images";
 import { colors, spacing } from "@/constants/theme";
 import { useSubscriptions } from "@/context/SubscriptionContext";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useState } from "react";
 import {
     FlatList,
+    Image,
     KeyboardAvoidingView,
     Platform,
     Text,
@@ -92,10 +94,26 @@ const Subscriptions = () => {
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets
           ListEmptyComponent={
-            status === "ready" ? <Text className="home-empty-state">No subscriptions found.</Text> : null
+            status === "ready" ? (
+              <View className="subscription-empty__state">
+                <Image
+                  source={images.emptyState}
+                  className="subscription-empty__image"
+                  resizeMode="contain"
+                  accessibilityLabel={
+                    normalizedQuery ? "No subscriptions found" : "No subscriptions yet"
+                  }
+                />
+              </View>
+            ) : null
           }
           ItemSeparatorComponent={() => <View className="h-4" />}
-          contentContainerClassName="pb-20"
+          className="flex-1"
+          contentContainerClassName={
+            status === "ready" && subscriptions.length === 0
+              ? "subscription-empty__content"
+              : "pb-20"
+          }
         />
       </KeyboardAvoidingView>
       {editingSubscription && (

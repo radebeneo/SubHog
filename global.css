@@ -323,6 +323,18 @@
         @apply py-4 text-sm font-sans-medium text-black/60;
     }
 
+    .subscription-empty__content {
+        @apply grow justify-center pb-20;
+    }
+
+    .subscription-empty__state {
+        @apply items-center;
+    }
+
+    .subscription-empty__image {
+        @apply aspect-[1443/1090] w-full max-w-80;
+    }
+
     .auth-safe-area {
         @apply flex-1 bg-background;
     }

@@ -112,18 +112,9 @@ export default function App() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={status === "ready" ? (
-          <View>
-            <Text className="home-empty-state">
-              No subscriptions yet. Add your first to start tracking your spending.
-            </Text>
-            <Pressable
-              className="auth-button"
-              accessibilityRole="button"
-              onPress={() => setIsCreateModalVisible(true)}
-            >
-              <Text className="auth-button-text">Add subscription</Text>
-            </Pressable>
-          </View>
+          <Text className="home-empty-state">
+            No subscriptions yet. Add your first to start tracking your spending.
+          </Text>
         ) : null}
         extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}
