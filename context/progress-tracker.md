@@ -6,6 +6,26 @@ Update this file after every meaningful implementation change.
 
 - Clerk–Convex Unit 3: implementation and local validation complete; real-device/live-account acceptance remains pending.
 
+### Subscriptions empty-state positioning (2026-10-23)
+
+- User screenshot showed `empty-state.png` extending behind the bottom navigation.
+- Moved ready-only empty and no-search-match artwork outside the FlatList into a
+  centered, non-scrollable viewport within the existing tab-bar-reserved list body.
+  A bounded, shrinkable frame and contain resizing keep the existing artwork
+  within that viewport; the asset, card rendering and pagination are unchanged.
+- Updated simulated screen regressions for empty/search states, transitions back
+  to cards, final-record removal and non-ready data states.
+- Validation: npm run typecheck passes; focused Vitest suite passes 61 tests across
+  five files; npm run lint completes on retry with zero errors and two existing
+  clsx import warnings (first attempt timed out); git diff --check passes.
+- Simulations do not verify native layout or pixels. Browser navigation redirected
+  to /sign-in with no readable text or controls, so authenticated visual acceptance
+  was not obtained. Check empty lists and unmatched searches above the tab bar in
+  Expo Go, including the search keyboard open and closed.
+- Review panel request returned “Another browser operation is still running.”
+  Changes were reviewed through the local Git diff; no panel success is claimed.
+- No packages, assets, backend functions or remote settings changed. No commit.
+
 ### Subscriptions scrolling and pagination (2026-10-23)
 
 - User requested a stationary Subscriptions screen when cards fit, with a maximum

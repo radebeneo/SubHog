@@ -98,63 +98,59 @@ const Subscriptions = () => {
         />
         <SubscriptionDataNotice />
         <View className="subscription-list__body">
-          <FlatList
-            key={`${normalizedQuery}:${page}`}
-            data={pageSubscriptions}
-            initialNumToRender={SUBSCRIPTIONS_PER_PAGE}
-            scrollEnabled={canScroll}
-            bounces={false}
-            alwaysBounceVertical={false}
-            overScrollMode="never"
-            onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
-            onContentSizeChange={(_width, height) => setContentHeight(height)}
-            renderItem={({ item }) => (
-              <SubscriptionCard
-                {...item}
-                expanded={expandedSubscriptionId === item.id}
-                onEditPress={() => setEditingId(item.id)}
-                onDeletePress={() => setDeletingId(item.id)}
-                onPress={() => {
-                  const isExpanding = expandedSubscriptionId !== item.id;
-                  posthog?.capture(
-                    "subscription_details_toggled",
-                    sanitizePostHogProperties({
-                      subscription_id: item.id,
-                      is_expanded: isExpanding,
-                      category: item.category,
-                      subscription_status: item.status,
-                    }),
-                  );
-                  setExpandedSubscriptionId(isExpanding ? item.id : null);
-                }}
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            ListEmptyComponent={
-              status === "ready" ? (
-                <View className="subscription-empty__state">
-                  <Image
-                    source={images.emptyState}
-                    className="subscription-empty__image"
-                    resizeMode="contain"
-                    accessibilityLabel={
-                      normalizedQuery ? "No subscriptions found" : "No subscriptions yet"
-                    }
-                  />
-                </View>
-              ) : null
-            }
-            ItemSeparatorComponent={() => <View className="h-4" />}
-            className="flex-1"
-            contentContainerClassName={
-              status === "ready" && subscriptions.length === 0
-                ? "subscription-empty__content"
-                : undefined
-            }
-          />
+          {status === "ready" && subscriptions.length === 0 ? (
+            <View className="subscription-empty__viewport" testID="subscriptions-empty-state">
+              <View className="subscription-empty__image subscription-empty__image-frame">
+                <Image
+                  source={images.emptyState}
+                  className="absolute inset-0 size-full"
+                  resizeMode="contain"
+                  accessibilityLabel={
+                    normalizedQuery ? "No subscriptions found" : "No subscriptions yet"
+                  }
+                />
+              </View>
+            </View>
+          ) : (
+            <FlatList
+              key={`${normalizedQuery}:${page}`}
+              data={pageSubscriptions}
+              initialNumToRender={SUBSCRIPTIONS_PER_PAGE}
+              scrollEnabled={canScroll}
+              bounces={false}
+              alwaysBounceVertical={false}
+              overScrollMode="never"
+              onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
+              onContentSizeChange={(_width, height) => setContentHeight(height)}
+              renderItem={({ item }) => (
+                <SubscriptionCard
+                  {...item}
+                  expanded={expandedSubscriptionId === item.id}
+                  onEditPress={() => setEditingId(item.id)}
+                  onDeletePress={() => setDeletingId(item.id)}
+                  onPress={() => {
+                    const isExpanding = expandedSubscriptionId !== item.id;
+                    posthog?.capture(
+                      "subscription_details_toggled",
+                      sanitizePostHogProperties({
+                        subscription_id: item.id,
+                        is_expanded: isExpanding,
+                        category: item.category,
+                        subscription_status: item.status,
+                      }),
+                    );
+                    setExpandedSubscriptionId(isExpanding ? item.id : null);
+                  }}
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              ItemSeparatorComponent={() => <View className="h-4" />}
+              className="flex-1"
+            />
+          )}
           {status === "ready" && pageCount > 1 && (
             <View className="subscription-pagination__controls">
               <Pressable

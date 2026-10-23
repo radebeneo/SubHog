@@ -93,8 +93,10 @@ classes for repeating patterns:
   `subscription-list__body` to reserve space above bottom navigation and fixed
   `subscription-pagination__*` Previous/Next pill controls when multiple pages exist.
   Enable scrolling only for measured overflow; disable bounce and overscroll.
-  Center the existing `subscription-empty__*` illustration for empty lists or
-  unmatched searches, only once data is ready.
+  Center the existing illustration in a non-scrollable
+  `subscription-empty__viewport` outside the FlatList for empty lists or unmatched
+  searches, only once data is ready. A bounded, shrinkable image frame preserves
+  the artwork above the bottom navigation when available height is reduced.
 - **Subscription card inline expand**: Tapping a `sub-card` toggles an `expanded` boolean in local state. The card animates to show `sub-body` details below. Use `react-native-reanimated` for the height animation.
 - **Add Subscription modal**: React Native `<Modal>` with `transparent` + `animationType="slide"`. Renders as a bottom sheet using `modal-container` (`.mt-auto.max-h-[85%].rounded-t-3xl`). Backdrop is `modal-overlay` (`.bg-black/50`).
 - **Subscription management**: Expanded Subscriptions-tab cards show Edit/Delete

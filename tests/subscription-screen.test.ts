@@ -41,7 +41,7 @@ function find(tree: ReactNode, type: string, label?: string): Element | undefine
   let result: Element | undefined;
   Children.forEach(tree, (node) => {
     if (result || !isValidElement<Element["props"]>(node)) return;
-    if (node.type === type && (!label || node.props.accessibilityLabel === label)) {
+    if (node.type === type && (!label || node.props.accessibilityLabel === label || node.props.testID === label)) {
       result = node;
     } else {
       result = find(node.props.children, type, label);
@@ -58,7 +58,6 @@ interface ListProps {
   overScrollMode: string;
   onLayout: (event: { nativeEvent: { layout: { height: number } } }) => void;
   onContentSizeChange: (width: number, height: number) => void;
-  ListEmptyComponent: ReactNode;
 }
 
 function screenHarness() {
@@ -92,6 +91,8 @@ function screenHarness() {
   return {
     render: () => { tree = render(); },
     list: () => find(tree, "FlatList")!.props as unknown as ListProps,
+    hasList: () => Boolean(find(tree, "FlatList")),
+    emptyState: () => find(tree, "View", "subscriptions-empty-state"),
     key: () => find(tree, "FlatList")!.key,
     button: (label: string) => find(tree, "Pressable", label),
     press: (label: string) => {
@@ -136,12 +137,18 @@ describe("Subscriptions screen pagination and scroll wiring (simulated state)", 
     expect(screen.key()).toBe("service 1:1");
     expect(screen.button("Next subscriptions page")).toBeUndefined();
     screen.search("missing");
-    expect(screen.list().data).toEqual([]);
-    screen.list().onLayout({ nativeEvent: { layout: { height: 100 } } });
-    screen.list().onContentSizeChange(300, 300);
-    screen.render();
+    expect(screen.hasList()).toBe(false);
+    expect(screen.emptyState()).toBeDefined();
+    const image = find(screen.emptyState(), "Image")!;
+    expect(image.props.source).toBe(123);
+    expect(image.props.accessibilityLabel).toBe("No subscriptions found");
+    expect(screen.button("Next subscriptions page")).toBeUndefined();
+
+    screen.search("");
+    expect(screen.emptyState()).toBeUndefined();
+    expect(screen.list().data).toHaveLength(20);
+    expect(screen.key()).toBe(":1");
     expect(screen.list().scrollEnabled).toBe(false);
-    expect(find(screen.list().ListEmptyComponent, "Image")!.props.source).toBe(123);
   });
 
   it("clamps after the last page is removed and does not restore a stale page", () => {
@@ -174,14 +181,59 @@ describe("Subscriptions screen pagination and scroll wiring (simulated state)", 
     expect(screen.list().overScrollMode).toBe("never");
   });
 
-  it("keeps empty states stationary and does not show them during loading", () => {
+  it("renders the empty artwork in a bounded viewport outside the list", () => {
     mocks.subscriptions = [];
     const screen = screenHarness();
-    expect(screen.list().scrollEnabled).toBe(false);
+    expect(screen.hasList()).toBe(false);
     expect(screen.button("Next subscriptions page")).toBeUndefined();
-    expect(find(screen.list().ListEmptyComponent, "Image")!.props.source).toBe(123);
-    mocks.status = "loading";
+    expect(screen.button("Previous subscriptions page")).toBeUndefined();
+    expect(screen.emptyState()!.props.className).toBe("subscription-empty__viewport");
+
+    const frame = find(screen.emptyState()!.props.children, "View")!;
+    expect(frame.props.className).toBe("subscription-empty__image subscription-empty__image-frame");
+    const image = find(frame, "Image")!;
+    expect(image.props.source).toBe(123);
+    expect(image.props.className).toBe("absolute inset-0 size-full");
+    expect(image.props.resizeMode).toBe("contain");
+    expect(image.props.accessibilityLabel).toBe("No subscriptions yet");
+  });
+
+  it.each(["loading", "error", "unconfigured", "auth-loading", "auth-required"])(
+    "does not show empty imagery while data is %s",
+    (status) => {
+      mocks.subscriptions = [];
+      mocks.status = status;
+      const screen = screenHarness();
+      expect(screen.emptyState()).toBeUndefined();
+      expect(screen.hasList()).toBe(true);
+      expect(screen.list().scrollEnabled).toBe(false);
+
+      mocks.status = "ready";
+      screen.render();
+      expect(screen.hasList()).toBe(false);
+      expect(screen.emptyState()).toBeDefined();
+    },
+  );
+
+  it("switches from overflowing cards to stationary artwork when the final record is removed", () => {
+    mocks.subscriptions = mocks.subscriptions.slice(0, 1);
+    const screen = screenHarness();
+    screen.list().onLayout({ nativeEvent: { layout: { height: 100 } } });
+    screen.list().onContentSizeChange(300, 300);
     screen.render();
-    expect(screen.list().ListEmptyComponent).toBeNull();
+    expect(screen.list().scrollEnabled).toBe(true);
+
+    mocks.subscriptions = [];
+    screen.render();
+    expect(screen.hasList()).toBe(false);
+    expect(screen.emptyState()).toBeDefined();
+
+    mocks.subscriptions = [{ id: "new", name: "New service", price: 10, billing: "Monthly", icon: 1 }];
+    screen.render();
+    expect(screen.emptyState()).toBeUndefined();
+    screen.list().onLayout({ nativeEvent: { layout: { height: 500 } } });
+    screen.list().onContentSizeChange(300, 150);
+    screen.render();
+    expect(screen.list().scrollEnabled).toBe(false);
   });
 });

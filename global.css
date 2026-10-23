@@ -355,8 +355,16 @@
         @apply items-center;
     }
 
+    .subscription-empty__viewport {
+        @apply min-h-0 flex-1 items-center justify-center overflow-hidden;
+    }
+
     .subscription-empty__image {
         @apply aspect-[1443/1090] w-full max-w-80;
+    }
+
+    .subscription-empty__image-frame {
+        @apply relative shrink overflow-hidden;
     }
 
     .auth-safe-area {
