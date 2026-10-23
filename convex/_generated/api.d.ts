@@ -9,6 +9,8 @@
  */
 
 import type * as dashboard from "../dashboard.js";
+import type * as emails from "../emails.js";
+import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dashboardValidators from "../lib/dashboardValidators.js";
@@ -24,6 +26,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
+  emails: typeof emails;
+  http: typeof http;
   identity: typeof identity;
   "lib/auth": typeof lib_auth;
   "lib/dashboardValidators": typeof lib_dashboardValidators;
@@ -58,4 +62,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  resend: import("@convex-dev/resend").ResendComponent;
+};

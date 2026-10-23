@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@clerk/expo": "^4.6.6",
+    "@convex-dev/resend": "0.2.10",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
