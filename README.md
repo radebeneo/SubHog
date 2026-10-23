@@ -34,12 +34,23 @@ development instance and a fresh Convex development deployment.
 Unit 1 adds the authenticated provider, an empty schema, ownership helpers and a
 read-only identity query. In development, Settings includes a connection check.
 It reports configuration, authentication and query states separately.
-Subscription persistence is not implemented yet. Switching Clerk accounts or
-sessions resets route-local state and closes the previous Convex client.
+Switching Clerk accounts or sessions resets route-local state and closes the
+previous Convex client. Unit 2 adds the subscription backend described below.
 
 The legacy REST/MongoDB contract is superseded for this backend. Existing API
 helpers/tests are historical and disconnected. Supabase Storage is deferred
 because the current app has no upload feature.
+
+## Subscription backend (Unit 2)
+
+The Convex backend provides owned create, paginated list, get, update and delete
+operations. It validates integer ZAR cents, Monthly/Yearly cycles, calendar dates,
+approved categories and optional metadata. See
+[Subscription backend rules and contract](docs/subscription-backend.md).
+
+Run `npm run test:convex` for auth/configuration and Convex function tests.
+The function tests use isolated in-memory databases and mocked identities.
+The next unit connects the existing forms and screens to these operations.
 
 ## Current in-memory subscription flow
 
@@ -61,8 +72,9 @@ not cancel the provider's service or payments.
 Reminder email is stored only; automated emails are not sent or scheduled.
 Do not enter full payment-card details. Search, Settings, and sign-out remain available.
 
-Subscriptions live in memory. Records and edits reset when the app restarts or
-you sign out. Durable persistence is not implemented.
+The current screens still use in-memory subscriptions. Records and edits reset
+when the app restarts or you sign out. The Unit 2 backend is ready for the
+subsequent UI connection unit; installing it alone does not persist screen data.
 
 Run editing/state and Home calculation tests with:
 `node --experimental-strip-types --test lib/subscription-edit.test.ts lib/subscription-summary.test.ts`.

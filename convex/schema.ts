@@ -1,4 +1,6 @@
-import { defineSchema } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
+import { subscriptionStoredValidator } from "./lib/subscriptionValidators";
 
-// Unit 1 verifies authentication only. Add tables with the approved write rules.
-export default defineSchema({});
+export default defineSchema({
+  subscriptions: defineTable(subscriptionStoredValidator).index("by_ownerId", ["ownerId"]),
+});

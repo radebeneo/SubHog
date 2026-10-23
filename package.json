@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "typecheck:convex": "tsc --noEmit -p convex/tsconfig.json && tsc --noEmit -p tsconfig.convex-tests.json",
-    "test:convex": "node --experimental-strip-types --test lib/convex-auth.test.ts lib/convex-config.test.ts",
+    "test:convex": "node --experimental-strip-types --test lib/convex-auth.test.ts lib/convex-config.test.ts && vitest run",
     "test:api": "node --experimental-strip-types --test lib/api-client.test.ts lib/api-config.test.ts lib/posthog-config.test.ts lib/subscription-controller.test.ts"
   },
   "dependencies": {
@@ -58,13 +58,16 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "~19.2.4",
+    "convex-test": "0.0.64",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
   },
   "private": true,
   "overrides": {

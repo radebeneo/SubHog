@@ -53,6 +53,20 @@
 - No component may store a copy of the subscription list in its own `useState` — always read from context
 - AsyncStorage reads happen once on app mount (inside the context provider). UI reads come from context state
 
+## Subscription backend validation and tests
+
+- Follow `docs/subscription-backend.md` for the approved Unit 2 wire/data rules.
+- Share pure validation and decimal-to-integer-cent parsing through
+  `lib/subscription-rules.ts`; keep it free of native and service dependencies.
+- Convex tests live in `convex/*.test.ts` and call generated API references through
+  convex-test with Vitest's edge-runtime environment. Test identities are mocked,
+  and test records live only in the isolated in-memory test backend.
+- `npm run test:convex` runs the existing auth/configuration tests followed by the
+  Convex function tests. `npm run typecheck:convex` checks backend and test types.
+- For lists, use owner-indexed pagination. Update validates a complete editable
+  field set and explicitly clears omitted optional fields.
+- App forms will reuse the approved validation during the UI connection unit.
+
 ## File Organization
 
 - `app/` — Expo Router screen files and layout files only; no business logic or shared components here

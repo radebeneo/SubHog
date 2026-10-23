@@ -10,6 +10,8 @@
 
 import type * as identity from "../identity.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_subscriptionValidators from "../lib/subscriptionValidators.js";
+import type * as subscriptions from "../subscriptions.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +22,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   identity: typeof identity;
   "lib/auth": typeof lib_auth;
+  "lib/subscriptionValidators": typeof lib_subscriptionValidators;
+  subscriptions: typeof subscriptions;
 }>;
 
 /**

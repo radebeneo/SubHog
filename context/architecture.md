@@ -31,6 +31,25 @@ The current SubscriptionContext and subscription interactions remain in memory.
 - See `docs/convex-setup.md` for setup and acceptance checks. Legacy API code/tests
   are retained as historical code, not contracts for this backend.
 
+## Approved subscription backend — Unit 2
+
+`convex/schema.ts` gains an owner-indexed subscriptions table. Public operations
+in `convex/subscriptions.ts` are intended for the next unit's Convex hooks:
+create, paginated list, get, full editable-field update and remove. Each operation
+requires verified identity; every ID-based operation checks the document owner.
+Mutations validate the complete resulting editable record atomically.
+
+Shared pure validation and decimal-to-cents parsing live in
+`lib/subscription-rules.ts`, without React Native or service dependencies, so the
+future forms can reuse the same rules. Convex validators describe the stored schema
+and enforce the wire contract. Only integer cents and one billingCycle are stored.
+Owner, currency, active status, initial color and serializable icon are immutable
+through the edit endpoint. Tests call the registered functions via convex-test.
+
+The approved product rules, date/rounding policy, error semantics and next-unit
+boundary are in `docs/subscription-backend.md`. The current UI continues to use
+in-memory SubscriptionContext until the app connection unit.
+
 ## Stack
 
 | Layer | Technology | Role |

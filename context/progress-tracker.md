@@ -4,7 +4,43 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Clerk–Convex Unit 1: approved local authentication foundation and guided development setup.
+- Clerk–Convex Unit 2: approved subscription backend implementation and tests.
+
+### Subscription backend — Unit 2 (2026-10-23)
+
+- User reports Convex identity verification succeeded for a different account.
+  Records disappeared after restart and sign-out/sign-in, as expected for the
+  current in-memory UI. This is user-reported acceptance, not automated device testing.
+- User approved the rules and limits in `docs/subscription-backend.md`: ZAR,
+  Monthly/Yearly, integer cents, amount/text limits, decimal rejection,
+  optional metadata, calendar dates, categories and active-only creation.
+- Africa/Johannesburg, anchored month-end recurrence and final-total half-up
+  rounding are agreed for the subsequent calculation unit.
+- User approved convex-test, Vitest and @edge-runtime/vm development dependencies.
+- Implemented the owner-indexed subscription schema and protected
+  create/list/get/update/delete functions, shared validation, integer-cent parsing,
+  optional-field clearing and serializable icons.
+- Added 76 Convex function/validation tests; all pass alongside the 10 existing
+  auth/configuration tests. Coverage includes signed-out rejection, cross-account
+  and cross-issuer access, missing/foreign IDs, failed-write atomicity and pagination.
+- App and backend/test typechecks pass. Uncached lint has zero errors and the two
+  existing clsx import warnings.
+- `npx convex dev --once --typecheck enable` successfully synchronized schema and
+  functions to personal development deployment `flippant-dolphin-108`.
+- Public no-token HTTP queries to deployed `identity:current` and
+  `subscriptions:list` both returned UNAUTHENTICATED.
+- Installed approved dev tools: convex-test 0.0.64, Vitest 5.0.5 and
+  @edge-runtime/vm 5.0.0. Restored all previously locked package versions; Vite's
+  newer PostCSS requirements are nested under the test tooling. Installed versions
+  match the lockfile.
+- Dependency installation reported 42 audit findings (15 moderate, 26 high,
+  1 critical); the audit did not name the added test tools or Vite/PostCSS as
+  vulnerable. Broad dependency remediation is outside this unit.
+- Unit 2 backend is complete. UI cutover and dashboard calculations follow as
+  separate units. The current screens still use in-memory subscriptions.
+- Mocked ownership tests do not establish live JWT or device behavior. Real-session
+  writes, restart persistence, token refresh/reconnect and comprehensive session
+  isolation remain acceptance checks for subsequent work.
 
 ### Clerk–Convex Unit 1 (2026-10-23)
 
@@ -18,7 +54,11 @@ Update this file after every meaningful implementation change.
   regression cases while retaining HTTPS, origin-only and credential checks.
   The regional regression now passes; all 10 auth/configuration tests, app and
   backend/test typechecks, and uncached lint pass (zero errors, two existing
-  clsx import warnings). Live Clerk identity acceptance is pending in Settings.
+  clsx import warnings).
+- User supplied a mobile Settings screenshot showing
+  “Connected. Convex verified your current Clerk account.”
+  This confirms successful live identity verification for the current session,
+  based on user-provided evidence; it is not a full device acceptance test.
 - Implemented the root Clerk–Convex provider with session-keyed route/client
   lifetime and deferred cleanup that tolerates Strict Mode effect replay.
   Navigation mounts synchronously for existing Clerk completion callbacks.
@@ -35,15 +75,16 @@ Update this file after every meaningful implementation change.
 - Earlier verification passed 17 subscription editing/calendar regression tests
   and the iOS production bundle export after lifecycle refinement:
   `npx expo export --platform ios --max-workers 2 --output-dir dist/unit1-ios`.
-  Local Unit 1 implementation and the regional URL fix are ready; checking the
-  signed-in development build is the next user-guided step.
-- Browser navigation reached `/sign-in`, but the snapshot was empty and showing
-  the browser panel timed out. Metro logged an error at the unchanged
+  Local Unit 1 implementation, regional URL validation and the current session's
+  live identity connection are confirmed; remaining auth acceptance follows.
+- Earlier browser navigation reached `/sign-in`, but the snapshot was empty and
+  showing the browser panel timed out. Metro logged an error at the unchanged
   `SocialAuthButtons.tsx:109` SVG; its runtime cause is not confirmed.
-  Browser and device acceptance are not claimed. The review panel opened.
+  Browser acceptance is not claimed. The review panel opened.
 - The assistant has not changed remote resources or dashboard settings.
-  The user reported successful development synchronization; live JWT verification,
-  token refresh and account/session switching still require acceptance testing.
+  Signed-out/invalid-token rejection, token refresh, reconnect, protected-route
+  behavior and account/session switching still require live acceptance testing.
+  Subscription persistence and cross-account document access await a later unit.
 - Unrelated untracked `assets/images/desktop.ini` and `empty-state.png` appeared
   during implementation and were left untouched.
 - Empty schema avoids inventing unapproved financial/preference rules.
@@ -78,9 +119,10 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Complete Unit 1's local Clerk–Convex foundation and guide development configuration.
-- Verify the deployed identity query and session isolation after a development target is selected.
-- Keep subscriptions in memory until authorized CRUD and financial rules are ready.
+- Unit 2's approved subscription backend is implemented and development-synced.
+- Next, connect forms and the shared subscription source to the tested Convex API.
+- Verify real-session persistence and account isolation after UI cutover, and
+  complete outstanding JWT/device lifecycle acceptance.
 - Reminder email remains storage-only metadata; delivery is outside this scope.
 
 ### Dynamic Home (2026-10-23)
@@ -168,10 +210,16 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-1. Follow `docs/convex-setup.md` to activate Clerk's development integration and select a fresh Convex development deployment.
-2. Complete live identity/JWT rejection and device/session-isolation acceptance.
-3. Resolve billing, amount, metadata and preference rules before the next approved unit.
-4. Implement owned subscription CRUD before switching shared screens to Convex hooks.
+1. Connect the existing subscription forms and shared source to Convex hooks,
+   using the approved rules in `docs/subscription-backend.md`.
+2. Verify create/edit/delete persistence across restarts and real-account switches,
+   including draft retention, error states and duplicate-submit handling.
+3. Implement the agreed backend renewal and dashboard/insight calculations.
+4. Complete invalid-JWT, refresh/reconnect and device/session-isolation acceptance.
+5. Define preference fields and lifecycle controls in their own future units.
+
+Unit 2 closeout: `git diff --check` passes. The CM review panel could not open
+because its connection was unavailable; review changes through the local Git diff.
 
 ## Open Questions
 

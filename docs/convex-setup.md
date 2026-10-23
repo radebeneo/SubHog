@@ -1,6 +1,16 @@
 # Clerk–Convex development setup — Unit 1
 
-## What this unit does
+## Current project status
+
+Development setup is already complete for `flippant-dolphin-108` in the SubHog
+project. Existing contributors should use `npx convex dev`, not create another
+deployment. The steps below remain available for initial setup.
+
+Unit 2 adds the subscriptions table and owned operations described in
+[Subscription backend](subscription-backend.md). The Expo screens still use the
+local in-memory flow until the UI connection unit.
+
+## What Unit 1 established
 
 - Installs the approved `convex@1.48.0`; installed Expo matches the existing
   `57.0.31` lockfile. Existing Clerk, React Native and NativeWind versions are retained.
@@ -143,7 +153,13 @@ audience and successful backend sync, then sign out/in. A persistent authenticat
 wait can also indicate an unreachable deployment or offline device.
 The connection check is hidden in production builds.
 
-### Security acceptance still requiring a development deployment
+### Live security acceptance
+
+Unit 2 verified public no-token rejection for `identity:current` and
+`subscriptions:list` on the configured development deployment. The Settings
+identity check also succeeded for two accounts according to user-provided
+evidence. The remaining checks below distinguish platform/token behavior from
+mocked ownership tests.
 
 - Call `identity:current` without a token using the public Convex HTTP client:
   expect `UNAUTHENTICATED`. A dashboard admin identity is not proof of public
@@ -180,12 +196,15 @@ passed with `codegen --system-udfs --typecheck enable`. This invokes the package
 generator without a deployment; it is not a deployment/authentication test and
 should not become the ordinary workflow. Do not hand-edit `_generated` files.
 
-## Next approved unit
+## Subscription backend and next unit
 
-Agree amount/text limits, integer minor-unit conversion and decimal rejection,
-rounding, date/recurrence/timezone policy, categories, status transitions/reactivation
-and actual preference fields. Then implement typed authorized subscription
-operations, including update/delete, before cutting the shared UI over to server
-data. Every protected function must derive ownership from verified
-`identity.tokenIdentifier` and check ownership on ID-based access. Store serializable
-icon references, never React Native asset handles.
+The approved limits, date/rounding policy and Unit 2 operations are documented in
+`docs/subscription-backend.md`. `npm run test:convex` now also runs the registered
+subscription functions against convex-test's isolated in-memory database, covering
+validation, ownership, pagination and rejected writes.
+
+Next, connect the existing forms and shared subscription source to Convex hooks
+with loading/error states, awaited mutations and draft retention on failure.
+Mobile restart persistence and real-session account isolation are acceptance
+checks for that connection unit. Lifecycle controls and preference fields remain
+deferred.

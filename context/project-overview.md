@@ -22,6 +22,21 @@ provisioning, demo seeding, payment processing, provider cancellation, push/emai
 delivery, historical payment reporting, or full offline synchronization in this scope.
 See `docs/convex-setup.md` for guided development configuration.
 
+## Approved subscription backend — Unit 2 (2026-10-23)
+
+The user approved ZAR, Monthly/Yearly billing, integer cents (1–9,999,999),
+two-decimal rejection, trimmed 80-character name/plan/payment labels and a
+254-character optional reminder email. Categories retain the existing nine choices.
+Dates are calendar-only with an optional renewal anchor on or after the start date.
+New records are active; lifecycle controls are deferred. Africa/Johannesburg,
+anchor-preserving month-end recurrence and final-total-only half-up cent rounding
+are agreed for the subsequent calculation unit.
+
+Unit 2 builds the owned Convex subscription schema and create/list/get/update/delete
+functions with tests. The user approved convex-test, Vitest and @edge-runtime/vm
+as development dependencies. UI cutover follows as its own unit. See
+`docs/subscription-backend.md` for the complete rules and contract.
+
 ## Current Implementation (2026-10-23)
 
 Clerk handles real authentication. Subscription screens start empty and share an
