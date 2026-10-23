@@ -1,13 +1,10 @@
 import type { ImageSourcePropType } from "react-native";
+import type { SubscriptionIcon } from "@/types/subscription-record";
 
 import { icons } from "@/constants/icons";
 
 const ICONIFY_SEARCH_URL = "https://api.iconify.design/search";
 const ICONIFY_API_URL = "https://api.iconify.design";
-
-interface IconifySearchResponse {
-  icons?: string[];
-}
 
 interface IconCandidates {
   exactMatch?: string;
@@ -29,8 +26,12 @@ const searchIconify = async (query: string): Promise<IconCandidates> => {
   );
   if (!response.ok) return {};
 
-  const data = (await response.json()) as IconifySearchResponse;
-  const results = data.icons ?? [];
+  const data: unknown = await response.json();
+  const results = typeof data === "object" && data !== null && "icons" in data && Array.isArray(data.icons)
+    ? data.icons.filter((icon): icon is string =>
+      typeof icon === "string" && icon.length <= 128 &&
+      /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/.test(icon))
+    : [];
   const normalizedQuery = normalize(query);
   const matchingIcons = results.filter((result) => result.includes(":"));
 
@@ -50,11 +51,11 @@ const searchIconify = async (query: string): Promise<IconCandidates> => {
 const confidentMatch = (candidates: IconCandidates) =>
   candidates.exactMatch ?? candidates.simpleIconMatch;
 
-export const findSubscriptionIcon = async (
+export const findSubscriptionIconRecord = async (
   subscriptionName: string,
-): Promise<ImageSourcePropType> => {
+): Promise<SubscriptionIcon> => {
   const name = subscriptionName.trim();
-  if (!name) return icons.wallet;
+  if (!name) return { kind: "wallet" };
 
   try {
     const fullNameCandidates = await searchIconify(name);
@@ -77,8 +78,13 @@ export const findSubscriptionIcon = async (
     selectedIcon ??=
       fullNameCandidates.firstResult ?? firstWordCandidates.firstResult;
 
-    return selectedIcon ? { uri: iconUri(selectedIcon) } : icons.wallet;
+    return selectedIcon ? { kind: "iconify", name: selectedIcon } : { kind: "wallet" };
   } catch {
-    return icons.wallet;
+    return { kind: "wallet" };
   }
+};
+
+export const findSubscriptionIcon = async (name: string): Promise<ImageSourcePropType> => {
+  const icon = await findSubscriptionIconRecord(name);
+  return icon.kind === "iconify" ? { uri: iconUri(icon.name) } : icons.wallet;
 };

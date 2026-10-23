@@ -37,7 +37,17 @@ functions with tests. The user approved convex-test, Vitest and @edge-runtime/vm
 as development dependencies. UI cutover follows as its own unit. See
 `docs/subscription-backend.md` for the complete rules and contract.
 
-## Current Implementation (2026-10-23)
+## Approved UI connection — Unit 3 (2026-10-23)
+
+Existing forms and Home/Subscriptions/Insights now connect to the owned Convex
+subscription API. There is no local-write fallback. Fully loaded server-query
+records are shared across tabs; totals stay client-side until the calculation unit.
+Forms retain failed drafts, prevent duplicate pending writes, and close only after
+acknowledgement. Read retries do not reset drafts. Configuration, authentication,
+loading, reconnection and failures are explicit states. Real-device restart
+persistence and live account isolation require acceptance evidence, not mocked tests.
+
+## Historical in-memory implementation (superseded by Unit 3)
 
 Clerk handles real authentication. Subscription screens start empty and share an
 in-memory `SubscriptionContext`. The Home add button opens the existing modal;
@@ -73,19 +83,19 @@ API helpers and contract tests are retained but disconnected.
 1. A signed-in user can add, view, and delete subscriptions in under 30 seconds each
 2. The home screen shows total monthly spend and a list of upcoming renewals at a glance
 3. The insights screen breaks spending down by category with visual summaries
-4. The app works fully offline with local data storage (no backend required for v1)
+4. Confirmed subscriptions persist in Convex; writes require verified connectivity (full offline synchronization is deferred)
 5. Onboarding introduces the app value and routes new users to sign-up
 
 ## Core User Flow
 
 1. User opens the app and sees the Onboarding screen (first launch only)
 2. User taps "Get Started" → routed to Sign Up screen
-3. User creates an account (email + password, no OAuth in v1)
+3. User authenticates through Clerk (email/password or existing social login)
 4. User is routed to the Home (Dashboard) tab
 5. User taps the "+" button to add a new subscription via a bottom-sheet modal
-6. User fills in: name, logo/icon, price, billing cycle (monthly/yearly), category, and next renewal date
-7. Subscription appears in the active list on the Home screen
-8. User taps a subscription card to expand inline details (name, price, next renewal, category, cancel button)
+6. User enters name, ZAR price, Monthly/Yearly cycle and category; the existing create flow resolves the icon and automatic calendar dates
+7. After confirmed creation, the reactive server list shows the subscription on Home
+8. User expands inline details; Subscriptions-tab cards offer Edit and confirmed record deletion (not provider cancellation)
 9. User navigates to Subscriptions tab to see all subscriptions in full list view
 10. User navigates to Insights tab to see spending breakdown by category
 11. User navigates to Settings tab to manage account and preferences
@@ -102,12 +112,12 @@ API helpers and contract tests are retained but disconnected.
 
 ### Subscription Management
 
-- Add Subscription modal (bottom sheet): name, price, billing cycle, category, renewal date
+- Add Subscription modal: name, ZAR price, billing cycle and category; automatic icon/start/renewal defaults
 - Inline expanded card showing full subscription details
 - Edit subscription details and confirm Delete from expanded Subscriptions-tab cards
-- Optional reminder email stored locally only; automated delivery is not implemented
+- Optional reminder email persisted in Convex only; automated delivery is not implemented
 - All subscriptions list view (Subscriptions tab)
-- Dynamic route `/subscriptions/[id]` for full-screen detail view
+- Standalone detail route remains a scaffold; full-screen implementation is outside Unit 3
 
 ### Insights Tab
 
@@ -119,7 +129,7 @@ API helpers and contract tests are retained but disconnected.
 
 - Sign Up screen (email + password)
 - Sign In screen (email + password)
-- Local session persistence (no OAuth in v1)
+- Clerk session persistence and existing social-login flows
 
 ### Onboarding
 
@@ -137,9 +147,9 @@ API helpers and contract tests are retained but disconnected.
 ### In Scope
 
 - Expo Router file-based navigation (tabs + stack)
-- Local data storage (AsyncStorage or in-memory for v1)
+- Owned Convex subscription storage with reactive reads and acknowledged writes; drafts remain local
 - NativeWind (Tailwind CSS) styling using tokens defined in `global.css`
-- Auth screens (sign in / sign up) with local session state
+- Clerk sign-in/sign-up and verified Clerk–Convex authentication
 - Home dashboard with balance card, upcoming renewals, and active subscription list
 - Add subscription bottom-sheet modal
 - Inline subscription detail expand/collapse
@@ -149,11 +159,12 @@ API helpers and contract tests are retained but disconnected.
 
 ### Out of Scope
 
-- Backend API or database (no Supabase, Firebase, or custom server in v1)
-- OAuth / social login (Google, Apple, etc.)
-- Push notifications for renewal reminders
+- Legacy REST reconnection, Supabase Storage, application-user provisioning or demo seeding
+- Provider cancellation, payment processing or automated reminder delivery
+- Full offline synchronization or an application-level offline write queue
 - Sharing or exporting subscription data
-- Multi-currency support (USD only in v1)
+- Additional currencies/cycles beyond approved ZAR and Monthly/Yearly
+- Backend dashboard calculations and full-screen detail implementation within Unit 3 (separate units)
 - Web or tablet layout optimization
 - Dark mode (light theme only in v1)
 
@@ -163,6 +174,7 @@ API helpers and contract tests are retained but disconnected.
 2. The home balance card correctly sums all active subscription costs (normalized to monthly)
 3. The upcoming renewals row is sorted by nearest renewal date
 4. The insights tab displays a correct per-category cost breakdown
-5. The app navigates correctly between all tabs and the subscription detail route
+5. The app navigates between tabs and supports persisted inline details; standalone detail implementation remains deferred
 6. No TypeScript errors and no red-screen crashes on a fresh install
 7. The onboarding screen only shows on first launch (or when not signed in)
+8. Device acceptance proves create/edit/delete survive force-close/restart and real accounts remain isolated; automated mocked tests alone do not satisfy this criterion

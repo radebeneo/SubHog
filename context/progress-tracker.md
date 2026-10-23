@@ -4,7 +4,39 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Clerk–Convex Unit 2: approved subscription backend implementation and tests.
+- Clerk–Convex Unit 3: implementation and local validation complete; real-device/live-account acceptance remains pending.
+
+### Subscription UI connection — Unit 3 (2026-10-23)
+
+- User approved the next unit: replace the in-memory UI source with the existing
+  owned Convex API. Mocked backend tests remain distinct from real-device acceptance.
+- Defined the cutover, pagination, auth/error states and draft/write lifecycle in
+  architecture.md before implementation. Existing summaries remain client-side
+  until the separate agreed calculation unit.
+- Implemented the reactive native pagination bridge, awaited create/update/remove,
+  shared approved form validation, sanitized errors and immediate submission/
+  dismissal locks. Complete-list gating is in Home/Subscriptions/Insights; no local fallback.
+- Read failure/retry resets only the bridge, retaining complete server snapshots
+  and mounted drafts. Account/session lifetime invalidates delayed callbacks.
+  Create mounts only while open; Edit has the approved clearable category picker.
+- Home/Insights fragment repair is complete. App and backend/test typechecks pass;
+  76 Convex function tests, 10 auth/configuration tests, 17 existing editing/calendar
+  tests and 41 focused form/display/icon/simulated-hook tests pass. Uncached lint has zero errors
+  and two existing clsx warnings. iOS export to dist/unit3-ios succeeds.
+- Focused simulations manually commit effects and mock Convex hooks; they are not
+  React/native mounting or live persistence evidence. Added actual display-adapter/
+  cents round-trip and serializable icon lookup regressions, with only native
+  assets and HTTP responses stubbed. Final focused rerun passes all 41 tests.
+- Reviewed changed provider, forms, screen wiring and all new files. Reconciled
+  current overview/architecture/standards/README claims with the server-backed
+  implementation; retained historical milestones as history. git diff --check
+  passes, and the CM review panel opened without approving or committing changes.
+- Browser #root exists and its document is ready at http://localhost:8081/, but no
+  visible text/controls are exposed; screenshot returns “Tool result missing.”
+  No authenticated device acceptance was obtained. The concrete runtime blocker
+  and manual checklist are in docs/subscription-ui-acceptance.md.
+- No packages, assets, backend/schema, deployments or remote configuration changed
+  in Unit 3. Changes remain uncommitted; no pushes or commits.
 
 ### Subscription backend — Unit 2 (2026-10-23)
 
@@ -119,10 +151,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Unit 2's approved subscription backend is implemented and development-synced.
-- Next, connect forms and the shared subscription source to the tested Convex API.
-- Verify real-session persistence and account isolation after UI cutover, and
-  complete outstanding JWT/device lifecycle acceptance.
+- Unit 3's existing forms/shared source are connected to Unit 2's development-synced
+  Convex API. Local implementation, review and validation are complete.
+- Obtain user-assisted device evidence for restart persistence, account isolation,
+  native form behavior and outstanding JWT/session/reconnect checks.
+- Do not advance to backend calculations or claim end-to-end acceptance from mocks.
 - Reminder email remains storage-only metadata; delivery is outside this scope.
 
 ### Dynamic Home (2026-10-23)
@@ -151,10 +184,12 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- Manual device acceptance: reload Expo, sign in, verify empty Home with R0.00 monthly spend and no next renewal; add monthly R120 and yearly R1200 subscriptions, confirm R220.00 monthly spend and sorted Upcoming cards with full billing prices; expand cards, check Subscriptions/Insights, and sign out.
-- Convex development setup and live authentication acceptance are next.
-  Subscription persistence will use Convex in a subsequent approved unit.
-  Edit/delete is implemented locally; reminder delivery is outside current scope.
+- User-assisted device acceptance using docs/subscription-ui-acceptance.md:
+  create/edit/delete and force-close/restart, native pending/draft/error behavior,
+  token refresh/reconnect and two-real-account isolation.
+- Unit 1 configuration and Unit 2 deployment exist; Unit 3 now uses Convex, not
+  local subscription writes. Earlier milestone notes below are historical.
+- Reminder delivery, backend calculations and full offline sync remain outside this unit.
 
 ## Completed
 
@@ -210,12 +245,11 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-1. Connect the existing subscription forms and shared source to Convex hooks,
-   using the approved rules in `docs/subscription-backend.md`.
-2. Verify create/edit/delete persistence across restarts and real-account switches,
-   including draft retention, error states and duplicate-submit handling.
-3. Implement the agreed backend renewal and dashboard/insight calculations.
-4. Complete invalid-JWT, refresh/reconnect and device/session-isolation acceptance.
+1. Complete Unit 3 real-device acceptance from docs/subscription-ui-acceptance.md:
+   create/edit/delete across force-close/restart, failed drafts and pending controls.
+2. Verify real-account switching, refresh/reconnect and session replacement.
+3. Implement the agreed backend renewal/dashboard calculations as a separate unit.
+4. Complete remaining invalid-JWT acceptance.
 5. Define preference fields and lifecycle controls in their own future units.
 
 Unit 2 closeout: `git diff --check` passes. The CM review panel could not open
@@ -233,13 +267,14 @@ because its connection was unavailable; review changes through the local Git dif
 ## Architecture Decisions
 
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
-- Clerk remains the active authentication authority; the restored subscription demo makes no API requests.
-- SubscriptionContext is the in-memory source of truth, initialized empty (user decision, 2026-10-23).
-- Home derives active monthly spend and next billing occurrences from that list; recurrence preserves the original renewal anchor.
-- Additions and edits are local only and reset on unmount/restart; durable
-  persistence remains future work.
+- Clerk remains the authentication authority; Convex verifies its tokens.
+- Convex is the subscription source of truth; SubscriptionContext shares the latest
+  complete reactive server snapshot. No local-write fallback or optimistic records.
+- Home/Insights retain client-side calculations until the separate calculation unit.
+- Forms await confirmed writes. Account/session changes clear only local snapshots,
+  drafts and errors; persisted records remain in the owned backend.
 - Delete removes tracked records after confirmation, not provider billing.
-- Reminder email is optional local metadata only; no emails or analytics payloads
+- Reminder email is optional stored metadata only; no emails or analytics payloads
   containing this address are sent.
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
@@ -249,5 +284,5 @@ because its connection was unavailable; review changes through the local Git dif
 - The project name is **SubHog** (`app.json` slug: `SubHog`)
 - The color theme is warm: cream background (`#fff9e3`), deep navy text (`#081126`), burnt-orange accent (`#ea7a53`)
 - `global.css` is imported in `app/(tabs)/index.tsx` — confirm it is also imported in `app/_layout.tsx` (it currently is)
-- Home, Subscriptions, and Monthly Insights use the restored frontend demo; Settings retains real Clerk sign-out.
+- Home, Subscriptions and Monthly Insights share Convex data; Settings retains real Clerk sign-out.
 - Expo is running in dev mode (`npx expo start`) — test changes with Expo Go on device

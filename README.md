@@ -50,36 +50,48 @@ approved categories and optional metadata. See
 
 Run `npm run test:convex` for auth/configuration and Convex function tests.
 The function tests use isolated in-memory databases and mocked identities.
-The next unit connects the existing forms and screens to these operations.
 
-## Current in-memory subscription flow
+## Persisted subscription UI (Unit 3)
 
-Clerk authentication requires `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Subscription
-screens do not require a backend or read `EXPO_PUBLIC_API_BASE_URL`.
+Clerk authentication requires `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`; subscription
+storage requires `EXPO_PUBLIC_CONVEX_URL` and the configured Clerk–Convex backend
+from [Development setup](docs/convex-setup.md). The app does not reconnect the
+legacy REST API, even if `EXPO_PUBLIC_API_BASE_URL` is set. Missing configuration
+shows an explicit notice and disables writes; there is no local-write fallback.
 
-After signing in, Home starts empty. Tap the add button to create a subscription;
-it appears immediately on Home and Subscriptions and updates Monthly Insights.
-Home calculates active monthly spend (yearly prices divided by 12) and sorts
-Upcoming cards by the next billing date, advancing past dates by billing cycle.
-Countdowns refresh at midnight and when you return to Home or resume the app.
-On the Subscriptions tab, expand a card and tap Edit to change its name, plan,
-category, price, billing cycle, start/renewal dates (`YYYY-MM-DD`), payment-method
-label, and optional reminder email. Save Changes updates all tabs; Cancel or
-closing the editor discards the draft. Invalid prices, dates, or emails block saving.
-Delete opens a confirmation dialog. It removes the SubHog record only and does
-not cancel the provider's service or payments.
+Home, Subscriptions and Insights share the complete reactive Convex list.
+Pagination fetches successive pages of 100 before publishing lists/totals as
+complete. During a read retry the last complete server snapshot is retained;
+forms remain mounted and totals are hidden until the complete list returns.
+Home's existing client-side spend/renewal calculations remain unchanged until
+the separate backend calculation unit.
 
-Reminder email is stored only; automated emails are not sent or scheduled.
-Do not enter full payment-card details. Search, Settings, and sign-out remain available.
+Tap Home's add button to create a ZAR Monthly/Yearly subscription. On the
+Subscriptions tab, expand a card and tap Edit for name, plan, approved category,
+price, billing cycle, calendar-only start/renewal dates, payment-method label and
+optional reminder email. Amount text is parsed directly into integer cents;
+excess decimal places are rejected. Empty optional fields are cleared on save.
 
-The current screens still use in-memory subscriptions. Records and edits reset
-when the app restarts or you sign out. The Unit 2 backend is ready for the
-subsequent UI connection unit; installing it alone does not persist screen data.
+Create, Save and Delete await backend acknowledgement. Pending submissions
+disable editing/dismissal and reject duplicate taps. Failed writes preserve
+drafts with a sanitized error; read retry does not reset them. After an ambiguous
+failure, reconnect and check the list before explicitly retrying. No offline
+write queue or application-level automatic mutation replay is implemented.
+Account/session changes clear UI snapshots/drafts and close the old Convex client.
 
-Run editing/state and Home calculation tests with:
+Delete removes only the tracked record, not the provider's service or billing.
+Reminder email is stored only; no emails are sent or scheduled. Do not enter
+full payment-card details. The standalone detail-screen scaffold is not implemented
+by this unit. Legacy API helpers and tests remain disconnected historical code.
+
+Run focused UI/form regressions (simulated hooks/backend, no live/device claim):
+`npx vitest run --config vitest.ui.config.mts`.
+Run existing editing/calendar regressions:
 `node --experimental-strip-types --test lib/subscription-edit.test.ts lib/subscription-summary.test.ts`.
-The API helpers and contract tests remain in the repository as disconnected
-integration groundwork; setting an API URL does not enable them.
+
+See [UI connection acceptance](docs/subscription-ui-acceptance.md) for the
+real-device restart, edit/delete, account-isolation and reconnect checklist.
+Mocked ownership/write tests and bundle exports do not establish live persistence.
 
 ## Get a fresh project
 

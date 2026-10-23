@@ -1,10 +1,10 @@
+import SubscriptionDataNotice from "@/components/SubscriptionDataNotice";
 import { colors, spacing } from "@/constants/theme";
-import {
-  createSubscriptionDraft,
-  parseSubscriptionDraft,
-  validateSubscriptionDraft,
-} from "@/lib/subscription-edit";
-import type { SubscriptionDraft, SubscriptionEdits } from "@/types/subscription";
+import { SUBSCRIPTION_CATEGORIES } from "@/constants/subscriptions";
+import { useSubscriptionAction } from "@/hooks/useSubscriptionAction";
+import { createPersistedSubscriptionDraft, parseSubscriptionForm } from "@/lib/subscription-form";
+import type { SubscriptionDraft } from "@/types/subscription";
+import type { SubscriptionFields } from "@/types/subscription-record";
 import { clsx } from "clsx";
 import { useState } from "react";
 import {
@@ -23,11 +23,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 interface EditSubscriptionModalProps {
   subscription: Subscription;
   onClose: () => void;
-  onSave: (edits: SubscriptionEdits) => void;
+  onSave: (fields: SubscriptionFields) => Promise<void>;
+  canWrite: boolean;
 }
 
 interface DraftField {
-  key: Exclude<keyof SubscriptionDraft, "frequency">;
+  key: Exclude<keyof SubscriptionDraft, "frequency" | "category">;
   label: string;
   placeholder: string;
   helper?: string;
@@ -38,7 +39,6 @@ interface DraftField {
 const fields: DraftField[] = [
   { key: "name", label: "Name", placeholder: "e.g. Netflix", autoCapitalize: "words" },
   { key: "plan", label: "Plan (optional)", placeholder: "e.g. Premium" },
-  { key: "category", label: "Category (optional)", placeholder: "e.g. Entertainment" },
   { key: "price", label: "Price", placeholder: "0.00", keyboardType: "decimal-pad" },
   { key: "startDate", label: "Start date", placeholder: "YYYY-MM-DD", helper: "Use YYYY-MM-DD, e.g. 2026-10-23." },
   { key: "renewalDate", label: "Renewal date (optional)", placeholder: "YYYY-MM-DD", helper: "Leave blank if unknown. Past dates roll forward by billing cycle on Home." },
@@ -50,20 +50,23 @@ export default function EditSubscriptionModal({
   subscription,
   onClose,
   onSave,
+  canWrite,
 }: EditSubscriptionModalProps) {
-  // The screen mounts a fresh editor for each edit session.
-  const [draft, setDraft] = useState(() => createSubscriptionDraft(subscription));
+  // The screen mounts a fresh editor for each edit session; read retries retain it.
+  const [draft, setDraft] = useState(() => createPersistedSubscriptionDraft(subscription));
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const errors = validateSubscriptionDraft(draft);
-
-  const handleSave = (): void => {
+  const { pending, error, isPending, run } = useSubscriptionAction();
+  const parsed = parseSubscriptionForm(draft);
+  const errors = parsed.ok ? {} : parsed.errors;
+  const handleClose = (): void => { if (!isPending()) onClose(); };
+  const handleSave = async (): Promise<void> => {
     setHasSubmitted(true);
-    const edits = parseSubscriptionDraft(draft, subscription);
-    if (edits) onSave(edits);
+    if (!parsed.ok || !canWrite) return;
+    await run(async () => { await onSave(parsed.fields); }, onClose);
   };
 
   return (
-    <Modal transparent visible animationType="slide" onRequestClose={onClose}>
+    <Modal transparent visible animationType="slide" onRequestClose={handleClose}>
       <View className="modal-overlay">
         <KeyboardAvoidingView
           style={{ flex: 1, justifyContent: "flex-end" }}
@@ -82,7 +85,8 @@ export default function EditSubscriptionModal({
                   accessibilityRole="button"
                   accessibilityLabel="Close editor without saving"
                   className="modal-close subscription-editor__close"
-                  onPress={onClose}
+                  onPress={handleClose}
+                  disabled={pending}
                 >
                   <Text className="modal-close-text">×</Text>
                 </Pressable>
@@ -98,6 +102,7 @@ export default function EditSubscriptionModal({
                 <Text className="auth-helper">
                   Changes update your tracked subscription only.
                 </Text>
+                <SubscriptionDataNotice />
                 {fields.map((field) => (
                   <View className="auth-field" key={field.key}>
                     <Text className="auth-label">
@@ -119,6 +124,7 @@ export default function EditSubscriptionModal({
                       keyboardType={field.keyboardType}
                       autoCapitalize={field.autoCapitalize ?? "none"}
                       autoCorrect={false}
+                      editable={!pending}
                     />
                     {field.helper && <Text className="auth-helper">{field.helper}</Text>}
                     {hasSubmitted && errors[field.key] && (
@@ -137,7 +143,8 @@ export default function EditSubscriptionModal({
                         key={frequency}
                         accessibilityRole="radio"
                         accessibilityLabel={`${frequency} billing`}
-                        accessibilityState={{ checked: draft.frequency === frequency }}
+                        disabled={pending}
+                        accessibilityState={{ checked: draft.frequency === frequency, disabled: pending }}
                         className={clsx(
                           "picker-option",
                           draft.frequency === frequency && "picker-option-active",
@@ -154,6 +161,27 @@ export default function EditSubscriptionModal({
                     ))}
                   </View>
                 </View>
+                <View className="auth-field">
+                  <Text className="auth-label">Category (optional)</Text>
+                  <View className="category-scroll">
+                    {["", ...SUBSCRIPTION_CATEGORIES].map((category) => (
+                      <Pressable
+                        key={category}
+                        accessibilityRole="radio"
+                        accessibilityLabel={category || "No category"}
+                        accessibilityState={{ checked: draft.category === category, disabled: pending }}
+                        disabled={pending}
+                        className={clsx("category-chip", draft.category === category && "category-chip-active")}
+                        onPress={() => setDraft((current) => ({ ...current, category }))}
+                      >
+                        <Text className={clsx("category-chip-text", draft.category === category && "category-chip-text-active")}>
+                          {category || "None"}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {hasSubmitted && errors.category && <Text className="auth-error">{errors.category}</Text>}
+                </View>
               </ScrollView>
 
               <View className="subscription-editor__footer">
@@ -162,13 +190,21 @@ export default function EditSubscriptionModal({
                     Please correct the highlighted fields above.
                   </Text>
                 )}
-                <Pressable className="auth-button" accessibilityRole="button" onPress={handleSave}>
-                  <Text className="auth-button-text">Save Changes</Text>
+                {error && <Text className="auth-error" accessibilityLiveRegion="polite">{error}</Text>}
+                <Pressable
+                  className={clsx("auth-button", (!canWrite || pending) && "auth-button-disabled")}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !canWrite || pending, busy: pending }}
+                  disabled={!canWrite || pending}
+                  onPress={handleSave}
+                >
+                  <Text className="auth-button-text">{pending ? "Saving…" : "Save Changes"}</Text>
                 </Pressable>
                 <Pressable
                   className="subscription-editor__cancel"
                   accessibilityRole="button"
-                  onPress={onClose}
+                  onPress={handleClose}
+                  disabled={pending}
                 >
                   <Text className="auth-label">Cancel</Text>
                 </Pressable>
