@@ -4,7 +4,45 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Clerk–Convex Unit 3: implementation/local validation complete; create/edit/delete restart persistence and account-specific visibility confirmed by user report; remaining lifecycle/UI acceptance checks pending.
+- Backend calculation Unit 4: implemented, locally tested and development-synced.
+  Home/Insights integration and reminder delivery remain separate. Unit 3
+  create/edit/delete restart persistence is confirmed per user report;
+  remaining lifecycle/UI acceptance checks are still pending.
+
+### Backend calculations — Unit 4 (2026-10-23)
+
+- Added authenticated dashboard.summary with explicit timestamp input, verified
+  tokenIdentifier ownership and bounded by_ownerId reads. No schema changes.
+- Added pure integer-twelfths spending, annual run-rate, independently rounded
+  categories/average and original-anchor monthly/yearly renewal calculations.
+  Johannesburg dates/countdowns use explicit UTC+02:00, not host-local time.
+- Missing/invalid anchors remain unknown; dates are never patched by calculations.
+  Upcoming output is bounded separately from totals and exposes hasMoreUpcoming.
+- Query accepts up to 1000 owned subscriptions; larger accounts receive
+  SUMMARY_LIMIT_EXCEEDED rather than partial totals. CRUD remains unrestricted
+  by this guard. Larger-scale aggregation needs a separate approved component unit.
+- 64 new calculation/query tests pass; 140 total Convex tests and 10 existing
+  auth/config tests pass. Calculation suite also passes in America/New_York.
+  Tests cover rounding boundaries, empty/mixed accounts, all categories, past/
+  future/missing anchors, month ends/leap/century rules, Johannesburg midnight,
+  >100-row summaries, read-limit boundaries, issuer/account isolation and CRUD
+  recalculation. These are mocked/pure tests, not native or live JWT evidence.
+- App/backend/test typechecks pass. Uncached lint: zero errors, two existing clsx
+  warnings. All 61 focused UI/form/simulated-hook regression tests pass.
+- npx convex dev --once --typecheck enable synchronized successfully to personal
+  development deployment flippant-dolphin-108 (radebeneo17:subhog:dev/neo-radebe).
+  Initial codegen emitted upload messages despite describing itself as local;
+  its test-seed type error was fixed before the successful explicit dev sync.
+- Public deployed dashboard:summary query without a token returned
+  UNAUTHENTICATED; no admin identity or remote subscription mutation was used.
+  This verifies live signed-out rejection, not authenticated screen behavior.
+- Documented contract/guard in docs/subscription-calculations.md and reconciled
+  architecture, overview, standards, README and backend policy.
+- No packages, assets, screens, schema, production settings or remote seed data
+  changed. CM review panel opened. No commit.
+- Home/Insights still use client calculations pending Unit 5. Reminder delivery,
+  canceled drafts, optional-field clearing, reconnect/error recovery,
+  duplicate-tap controls and native pagination/empty-state checks remain separate.
 
 ### User-reported subscription persistence acceptance (2026-10-23)
 
@@ -210,11 +248,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Unit 3's existing forms/shared source are connected to Unit 2's development-synced
-  Convex API. Local implementation, review and validation are complete.
-- Obtain user-assisted device evidence for restart persistence, account isolation,
-  native form behavior and outstanding JWT/session/reconnect checks.
-- Do not advance to backend calculations or claim end-to-end acceptance from mocks.
+- Backend calculation Unit 4 is complete and development-synced; its mocked
+  calculation/auth tests remain distinct from live/device evidence.
+- Next implementation unit: connect Home/Insights to dashboard.summary while
+  preserving layout and loading/error states, then verify reactive CRUD updates.
+- Unit 3 core restart persistence is confirmed per user report. Continue separate
+  native draft/optional clearing/pending/reconnect/JWT/account-switch acceptance.
 - Reminder email remains storage-only metadata; delivery is outside this scope.
 
 ### Dynamic Home (2026-10-23)
@@ -243,12 +282,13 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- User-assisted device acceptance using docs/subscription-ui-acceptance.md:
-  create/edit/delete and force-close/restart, native pending/draft/error behavior,
-  token refresh/reconnect and two-real-account isolation.
-- Unit 1 configuration and Unit 2 deployment exist; Unit 3 now uses Convex, not
-  local subscription writes. Earlier milestone notes below are historical.
-- Reminder delivery, backend calculations and full offline sync remain outside this unit.
+- Remaining user-assisted device acceptance using docs/subscription-ui-acceptance.md:
+  optional-field clearing, canceled drafts, native pending/error/pagination/empty
+  states, token refresh/reconnect and transient account-switch isolation.
+- Unit 3 uses Convex, not local subscription writes; user reports core CRUD
+  persistence across restart. Unit 4 backend calculations are complete.
+- Home/Insights reactive calculation wiring is next. Reminder delivery and full
+  offline synchronization remain deferred. Earlier notes below are historical.
 
 ## Completed
 
@@ -304,12 +344,13 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-1. Complete Unit 3 real-device acceptance from docs/subscription-ui-acceptance.md:
-   create/edit/delete across force-close/restart, failed drafts and pending controls.
-2. Verify real-account switching, refresh/reconnect and session replacement.
-3. Implement the agreed backend renewal/dashboard calculations as a separate unit.
+1. Connect Home/Insights to the completed backend calculations as Unit 5;
+   preserve layouts/loading/error states and verify reactive create/edit/delete.
+2. Complete remaining Unit 3 real-device acceptance: canceled drafts, clearing
+   optional fields, duplicate taps, native pagination/empty states and failures.
+3. Verify real-account switching, refresh/reconnect and session replacement.
 4. Complete remaining invalid-JWT acceptance.
-5. Define preference fields and lifecycle controls in their own future units.
+5. Define preference fields, lifecycle controls and reminder delivery separately.
 
 Unit 2 closeout: `git diff --check` passes. The CM review panel could not open
 because its connection was unavailable; review changes through the local Git diff.
@@ -329,7 +370,7 @@ because its connection was unavailable; review changes through the local Git dif
 - Clerk remains the authentication authority; Convex verifies its tokens.
 - Convex is the subscription source of truth; SubscriptionContext shares the latest
   complete reactive server snapshot. No local-write fallback or optimistic records.
-- Home/Insights retain client-side calculations until the separate calculation unit.
+- Home/Insights retain client-side calculations until Unit 5 wiring; Unit 4's backend query is complete.
 - Forms await confirmed writes. Account/session changes clear only local snapshots,
   drafts and errors; persisted records remain in the owned backend.
 - Delete removes tracked records after confirmation, not provider billing.

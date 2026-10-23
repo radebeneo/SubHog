@@ -76,6 +76,16 @@
 - Keep real-device acceptance results in `docs/subscription-ui-acceptance.md`,
   separate from mocked identities, local helper tests and bundle exports.
 
+## Backend calculation rules — Unit 4
+
+- Follow docs/subscription-calculations.md for query outputs and calendar rules.
+- Queries accept explicit now; never use a wall-clock read for renewal calculations.
+- Sum integer twelfths first; round only final account/category/average cent totals.
+  Annual estimates must not multiply rounded monthly totals.
+- Preserve original renewal anchors; missing anchors stay unknown.
+- Owner-indexed bounded summary reads must reject overflow, not report partial sums.
+- Backend tests and development sync do not prove reactive Home/Insights or devices.
+
 ## File Organization
 
 - `app/` — Expo Router screen files and layout files only; no business logic or shared components here

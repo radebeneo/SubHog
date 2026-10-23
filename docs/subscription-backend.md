@@ -42,7 +42,9 @@ supply or change ownerId. Missing and foreign IDs return the same NOT_FOUND erro
   only to the nearest cent, with half-cents rounded up. Stored amounts do not change.
   Use integer arithmetic (for example, twelfths of a cent) to avoid floating-point
   rounding drift.
-- Backend calculations and dashboard/insight integration are subsequent units.
+- Backend calculations are implemented in Unit 4; dashboard/insight integration
+  follows separately. See `docs/subscription-calculations.md` for the query
+  contract, verification and read-limit behavior. Reminder delivery remains deferred.
 
 ## Backend contract
 

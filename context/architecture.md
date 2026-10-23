@@ -84,6 +84,38 @@ There is no in-memory fallback when configuration or authentication fails.
 - The unimplemented standalone detail-route scaffold is not a new detail-screen
   feature in this unit; existing inline details consume the persisted shared list.
 
+## Backend calculations — Unit 4 (2026-10-23)
+
+`convex/dashboard.ts` exposes the authenticated `dashboard.summary` query for
+the later Home/Insights integration. It derives ownership from tokenIdentifier,
+reads only the owner's indexed records, and delegates pure integer/calendar
+logic to `convex/lib/subscriptionCalculations.ts`. No schema or stored-anchor
+changes, scheduled jobs, reminder delivery, or screen changes are in this unit.
+
+- Pass an explicit epoch-millisecond `now` argument; queries must not read the
+  wall clock. The backend converts it to Africa/Johannesburg's modern UTC+02:00
+  calendar (timestamps from 1970 through the representable year 9999).
+  Later hooks must refresh the argument on Johannesburg midnight/focus/resume.
+- Accumulate monthly amounts as integer twelfths of a cent: monthly cents × 12,
+  yearly cents unchanged. Round only completed totals, half-up. Annual estimate
+  is monthly cents × 12 plus yearly cents, not rounded monthly spend × 12.
+  Average uses the unrounded total. Missing categories join Other; categories
+  sort by exact monthly-equivalent spend, with existing category order for ties.
+- Missing renewal anchors stay unknown. Due-today remains due today all day.
+  Past anchors advance directly from the original date, clamping month ends
+  without drift. Dates/countdowns are calendar-only and never depend on host TZ.
+  Occurrences beyond year 9999 cannot be represented and return null.
+- A technical read guard takes at most 1001 owner records and rejects accounts
+  above 1000 with SUMMARY_LIMIT_EXCEEDED instead of returning partial totals.
+  This does not limit CRUD or pagination. A larger-scale aggregate component
+  requires a separate approved dependency/backfill unit.
+- Upcoming output defaults to 20 rows (caller-selectable 1–100); next renewal is
+  computed before limiting, and hasMoreUpcoming explicitly identifies truncation.
+  Equal dates preserve owner-index creation order. Return display fields only,
+  never owner identifiers, payment labels or reminder email.
+- Home/Insights remain on their current client calculations until Unit 5.
+  Local convex-test results, development sync and device acceptance are distinct.
+
 ## Stack
 
 | Layer | Technology | Role |

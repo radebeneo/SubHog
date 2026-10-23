@@ -47,6 +47,18 @@ acknowledgement. Read retries do not reset drafts. Configuration, authentication
 loading, reconnection and failures are explicit states. Real-device restart
 persistence and live account isolation require acceptance evidence, not mocked tests.
 
+## Backend calculations — Unit 4 (2026-10-23)
+
+Implement and test owned monthly-equivalent spend, annual estimate, category
+totals, average cost, next renewal and bounded upcoming ordering in Convex.
+Use Johannesburg calendar days, immutable original renewal anchors and integer
+twelfths-of-a-cent arithmetic with final-total half-up rounding. Unknown anchors
+remain unknown. No historical payments or reminder delivery are implied.
+
+This is backend-only. Home/Insights integration follows separately; existing
+screens and loading/error layouts remain unchanged. See
+`docs/subscription-calculations.md` for the query contract and technical read guard.
+
 ## Historical in-memory implementation (superseded by Unit 3)
 
 Clerk handles real authentication. Subscription screens start empty and share an

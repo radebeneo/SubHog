@@ -8,8 +8,11 @@
  * @module
  */
 
+import type * as dashboard from "../dashboard.js";
 import type * as identity from "../identity.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_dashboardValidators from "../lib/dashboardValidators.js";
+import type * as lib_subscriptionCalculations from "../lib/subscriptionCalculations.js";
 import type * as lib_subscriptionValidators from "../lib/subscriptionValidators.js";
 import type * as subscriptions from "../subscriptions.js";
 
@@ -20,8 +23,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  dashboard: typeof dashboard;
   identity: typeof identity;
   "lib/auth": typeof lib_auth;
+  "lib/dashboardValidators": typeof lib_dashboardValidators;
+  "lib/subscriptionCalculations": typeof lib_subscriptionCalculations;
   "lib/subscriptionValidators": typeof lib_subscriptionValidators;
   subscriptions: typeof subscriptions;
 }>;

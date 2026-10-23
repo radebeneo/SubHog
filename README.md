@@ -63,8 +63,12 @@ Home, Subscriptions and Insights share the complete reactive Convex list.
 Pagination fetches successive pages of 100 before publishing lists/totals as
 complete. During a read retry the last complete server snapshot is retained;
 forms remain mounted and totals are hidden until the complete list returns.
-Home's existing client-side spend/renewal calculations remain unchanged until
-the separate backend calculation unit.
+Home/Insights still use their existing client-side calculations. Backend Unit 4
+adds `api.dashboard.summary` for integer-cent spending/category totals and
+Johannesburg anchored renewals, tested independently. Connecting both screens
+to this reactive query is the next separate unit. See the
+[Calculation contract](docs/subscription-calculations.md), including the explicit
+1000-record safety guard (larger accounts error rather than show partial totals).
 
 Tap Home's add button to create a ZAR Monthly/Yearly subscription. On the
 Subscriptions tab, expand a card and tap Edit for name, plan, approved category,
