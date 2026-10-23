@@ -4,13 +4,37 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Dynamic Home dashboard
+- Subscription editing and confirmed deletion
+
+### Edit/delete (2026-10-23)
+
+- User approved optional reminder email storage only; no email delivery or backend integration.
+- Defined scope in project overview and architecture before implementation.
+- Added typed editable fields, validated calendar-date drafts, and immutable
+  ID-based context update/delete functions using functional state updates.
+- Added prefilled edit bottom sheet with optional email/payment label and
+  validation; added explicit cross-platform delete confirmation.
+- Subscriptions-tab cards expose Edit/Delete. Header-only expansion avoids nested
+  action propagation; details show plan and reminder email.
+- Focused draft/state/derived-summary regression tests: 17 pass.
+- Validation: app typecheck and standalone strict TypeScript checks for both
+  editing/calendar test files pass; 17 editing/calendar tests pass, including
+  America/New_York timezone coverage; all 47 retained API tests pass.
+- Lint passes with zero errors and two pre-existing clsx import warnings.
+  iOS production export succeeds with two Metro workers; git diff --check passes.
+- CM Browser navigation/snapshot and review panel were unavailable, so interactive
+  device acceptance is not claimed. Manual test: add a subscription, open
+  Subscriptions, expand/Edit, save each field, verify Home/Insights, reopen and
+  Cancel a draft, clear optional email/renewal, test invalid input, then test
+  Keep Subscription and confirmed Delete (including deleting the last record).
+- Unrelated asset deletions appeared during this session; left untouched.
+- Data remains in memory and resets on sign-out/restart.
 
 ## Current Goal
 
-- Start with an empty subscription list and derive Home monthly spend and Upcoming from user-added records.
-- User approved advancing past renewal dates to the next billing cycle.
-- Keep the existing in-memory shared state and disconnected API groundwork.
+- Edit existing subscriptions from the Subscriptions screen and remove records after confirmation.
+- Store optional reminder email only; no delivery, backend reconnection, or new packages.
+- Preserve shared in-memory state and dynamic Home/Insights updates.
 
 ### Dynamic Home (2026-10-23)
 
@@ -39,7 +63,8 @@ Update this file after every meaningful implementation change.
 ## In Progress
 
 - Manual device acceptance: reload Expo, sign in, verify empty Home with R0.00 monthly spend and no next renewal; add monthly R120 and yearly R1200 subscriptions, confirm R220.00 monthly spend and sorted Upcoming cards with full billing prices; expand cards, check Subscriptions/Insights, and sign out.
-- Durable local storage and subscription edit/delete remain future work, not part of this restoration.
+- Durable local storage and reminder delivery remain future work. Edit/delete
+  is implemented as described in the current-phase entry above.
 
 ## Completed
 
@@ -104,7 +129,8 @@ Update this file after every meaningful implementation change.
 - What font family is used for `--font-sans`? The CSS token is set but no font loading code was found in `app/_layout.tsx`. The font must be loaded with `expo-font` before it can be used.
 - Should the home screen show a user avatar image or an initials placeholder when no photo exists?
 - What categories should be available in the Add Subscription modal? (Suggested: Entertainment, Productivity, Health & Fitness, Finance, Education, Shopping, Utilities, Other)
-- Should "Cancel Subscription" in the expanded card actually delete the record, or mark it as cancelled with a different visual state?
+- Resolved (2026-10-23): explicit Delete removes the tracked record after
+  confirmation; provider cancellation is not part of this feature.
 - Is AsyncStorage already installed, or does it need to be added? (`@react-native-async-storage/async-storage` is not in `package.json`)
 
 ## Architecture Decisions
@@ -113,7 +139,11 @@ Update this file after every meaningful implementation change.
 - Clerk remains the active authentication authority; the restored subscription demo makes no API requests.
 - SubscriptionContext is the in-memory source of truth, initialized empty (user decision, 2026-10-23).
 - Home derives active monthly spend and next billing occurrences from that list; recurrence preserves the original renewal anchor.
-- Additions are local only and reset on unmount/restart; persistence and edit/delete remain future work.
+- Additions and edits are local only and reset on unmount/restart; durable
+  persistence remains future work.
+- Delete removes tracked records after confirmation, not provider billing.
+- Reminder email is optional local metadata only; no emails or analytics payloads
+  containing this address are sent.
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
 

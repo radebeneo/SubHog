@@ -18,8 +18,25 @@ the next billing cycle for display, preserving their original monthly/yearly
 anchor. Due-today and tomorrow labels use local calendar days.
 The current add flow uses ZAR. No subscription API calls or backend configuration
 are required, even if `EXPO_PUBLIC_API_BASE_URL` is set. Added records reset when
-the provider unmounts or the app restarts; persistence and edit/delete remain
-future work. API helpers and contract tests are retained but disconnected.
+the provider unmounts or the app restarts; persistence remains future work.
+API helpers and contract tests are retained but disconnected.
+
+### Subscription editing and deletion (approved 2026-10-23)
+
+- Expanded cards on the Subscriptions tab offer Edit and Delete actions.
+- Edit opens a prefilled bottom sheet for name, optional plan/category, positive
+  price, Monthly/Yearly billing cycle, start date, optional renewal date,
+  optional payment-method label, and optional reminder email.
+- Dates use explicit `YYYY-MM-DD` calendar inputs. Invalid dates, non-positive
+  prices, invalid non-empty emails, and renewals before the start date block saving.
+  Past renewal anchors remain allowed and continue rolling forward on Home.
+- Saving updates the existing record by ID without changing its icon, color,
+  currency, status, or list position. Closing without saving discards the draft.
+- Delete asks for confirmation and removes only the tracked record; it does not
+  cancel service or billing with the provider.
+- Reminder email is stored only, may be cleared, and is never sent to analytics.
+  No emails are sent or scheduled in this feature (user decision).
+- All changes share the existing in-memory context and update Home and Insights.
 
 ## Goals
 
@@ -57,7 +74,8 @@ future work. API helpers and contract tests are retained but disconnected.
 
 - Add Subscription modal (bottom sheet): name, price, billing cycle, category, renewal date
 - Inline expanded card showing full subscription details
-- Delete / Cancel subscription from expanded card
+- Edit subscription details and confirm Delete from expanded Subscriptions-tab cards
+- Optional reminder email stored locally only; automated delivery is not implemented
 - All subscriptions list view (Subscriptions tab)
 - Dynamic route `/subscriptions/[id]` for full-screen detail view
 

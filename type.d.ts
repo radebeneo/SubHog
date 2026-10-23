@@ -19,6 +19,7 @@ declare global {
     plan?: string;
     category?: string;
     paymentMethod?: string;
+    reminderEmail?: string;
     status?: string;
     startDate?: string;
     price: number;
@@ -32,6 +33,8 @@ declare global {
   interface SubscriptionCardProps extends Omit<Subscription, "id"> {
     expanded: boolean;
     onPress: () => void;
+    onEditPress?: () => void;
+    onDeletePress?: () => void;
     onCancelPress?: () => void;
     isCancelling?: boolean;
   }

@@ -35,13 +35,21 @@ it appears immediately on Home and Subscriptions and updates Monthly Insights.
 Home calculates active monthly spend (yearly prices divided by 12) and sorts
 Upcoming cards by the next billing date, advancing past dates by billing cycle.
 Countdowns refresh at midnight and when you return to Home or resume the app.
-Search, card expansion, Settings, and sign-out remain available.
+On the Subscriptions tab, expand a card and tap Edit to change its name, plan,
+category, price, billing cycle, start/renewal dates (`YYYY-MM-DD`), payment-method
+label, and optional reminder email. Save Changes updates all tabs; Cancel or
+closing the editor discards the draft. Invalid prices, dates, or emails block saving.
+Delete opens a confirmation dialog. It removes the SubHog record only and does
+not cancel the provider's service or payments.
 
-Subscriptions live in memory. Added records reset when the app restarts or you
-sign out. Persistence and edit/delete are not implemented.
+Reminder email is stored only; automated emails are not sent or scheduled.
+Do not enter full payment-card details. Search, Settings, and sign-out remain available.
 
-Run the Home calculation tests with:
-`node --experimental-strip-types --test lib/subscription-summary.test.ts`.
+Subscriptions live in memory. Records and edits reset when the app restarts or
+you sign out. Durable persistence is not implemented.
+
+Run editing/state and Home calculation tests with:
+`node --experimental-strip-types --test lib/subscription-edit.test.ts lib/subscription-summary.test.ts`.
 The API helpers and contract tests remain in the repository as disconnected
 integration groundwork; setting an API URL does not enable them.
 

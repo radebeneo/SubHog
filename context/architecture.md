@@ -19,7 +19,9 @@
 - `app/(auth)/` — Clerk sign-in and sign-up screens.
 - `app/onboarding.tsx` — Standalone onboarding screen.
 - `app/_layout.tsx` — Root Stack, font/splash loading, Clerk, and optional analytics.
-- `context/SubscriptionContext.tsx` — Shared subscription list and `addSubscription`.
+- `context/SubscriptionContext.tsx` — Shared subscription list and add/update/delete actions.
+- `components/EditSubscriptionModal.tsx` and `components/DeleteSubscriptionModal.tsx` —
+  Local draft editor and explicit record-removal confirmation.
 - `context/*.md` — Project documentation alongside the context provider.
 - `constants/data.ts` — Tab definitions and unused legacy demo constants.
 - `lib/subscription-summary.ts` — Pure Home spend and renewal calculations.
@@ -45,7 +47,17 @@
 - Clerk remains the authentication authority; signed-out users are redirected by the tab layout.
 - The subscription provider mounts inside the authenticated tab layout and unmounts on sign-out.
 - Subscription creation is local demo behavior only; it does not create or modify server records.
-- Edit/delete and durable storage remain outside this restoration.
+- Subscription editing and confirmed deletion are local only, through
+  `updateSubscription(id, edits)` and `deleteSubscription(id)` in the shared provider.
+- `types/subscription.ts` defines editable fields; `lib/subscription-edit.ts`
+  handles draft validation/date conversion, and `lib/subscription-state.ts`
+  performs immutable ID-based updates/removals. Missing IDs are never recreated.
+- The Subscriptions tab owns selection by ID, not a copied list. Editing drafts
+  mount fresh for each edit session; cancellation never mutates shared data.
+- Optional reminder email and payment-method labels are plain local fields.
+  No payment credentials are requested, no reminder delivery is enabled, and
+  reminder email/payment data must not be included in analytics.
+- Durable storage remains outside this feature.
 
 ## Invariants
 

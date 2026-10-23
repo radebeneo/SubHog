@@ -17,21 +17,29 @@ const SubscriptionCard = ({
   category,
   plan,
   paymentMethod,
+  reminderEmail,
   renewalDate,
   startDate,
   status,
   expanded,
   onPress,
+  onEditPress,
+  onDeletePress,
 }: SubscriptionCardProps) => {
   const fallback = "Not provided";
 
   return (
-    <Pressable
-      onPress={onPress}
+    <View
       className={clsx("sub-card", expanded ? "sub-card-expanded" : "bg-card")}
       style={!expanded && color ? { backgroundColor: color } : undefined}
     >
-      <View className="sub-head">
+      <Pressable
+        className="sub-head"
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${name} details`}
+        accessibilityState={{ expanded }}
+      >
         <View className="sub-main">
           <SubscriptionIcon source={icon} size={64} className="sub-icon" />
           <View className="sub-copy">
@@ -49,7 +57,7 @@ const SubscriptionCard = ({
           <Text className="sub-price">{formatCurrency(price, currency)}</Text>
           <Text className="sub-billing">{billing}</Text>
         </View>
-      </View>
+      </Pressable>
       {expanded && (
         <View className="sub-body">
           <View className="sub-details">
@@ -117,10 +125,55 @@ const SubscriptionCard = ({
                 </Text>
               </View>
             </View>
+            {plan?.trim() && (
+              <View className="sub-row">
+                <View className="sub-row-copy">
+                  <Text className="sub-label">Plan:</Text>
+                  <Text className="sub-value">{plan.trim()}</Text>
+                </View>
+              </View>
+            )}
+            <View className="sub-row">
+              <View className="sub-row-copy">
+                <Text className="sub-label">Reminder email:</Text>
+                <Text className="sub-value">
+                  {reminderEmail?.trim() || fallback}
+                </Text>
+              </View>
+            </View>
           </View>
+          {reminderEmail?.trim() && (
+            <Text className="auth-helper">
+              Email stored only. Reminders are not sent yet.
+            </Text>
+          )}
+          {(onEditPress || onDeletePress) && (
+            <View className="subscription-actions__row">
+              {onEditPress && (
+                <Pressable
+                  className="subscription-actions__edit"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${name}`}
+                  onPress={onEditPress}
+                >
+                  <Text className="sub-cancel-text">Edit</Text>
+                </Pressable>
+              )}
+              {onDeletePress && (
+                <Pressable
+                  className="subscription-actions__delete"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${name}`}
+                  onPress={onDeletePress}
+                >
+                  <Text className="subscription-actions__delete-text">Delete</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       )}
-    </Pressable>
+    </View>
   );
 };
 

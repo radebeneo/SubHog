@@ -1,3 +1,5 @@
+import DeleteSubscriptionModal from "@/components/DeleteSubscriptionModal";
+import EditSubscriptionModal from "@/components/EditSubscriptionModal";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import { colors, spacing } from "@/constants/theme";
 import { useSubscriptions } from "@/context/SubscriptionContext";
@@ -18,7 +20,12 @@ const Subscriptions = () => {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const { subscriptions: allSubscriptions } = useSubscriptions();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { subscriptions: allSubscriptions, updateSubscription, deleteSubscription } =
+    useSubscriptions();
+  const editingSubscription = allSubscriptions.find((item) => item.id === editingId);
+  const deletingSubscription = allSubscriptions.find((item) => item.id === deletingId);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const subscriptions = allSubscriptions.filter((subscription) => {
@@ -39,7 +46,7 @@ const Subscriptions = () => {
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <Text className="mb-5 text-3xl font-sans-bold text-primary">
           Subscriptions
@@ -60,6 +67,8 @@ const Subscriptions = () => {
             <SubscriptionCard
               {...item}
               expanded={expandedSubscriptionId === item.id}
+              onEditPress={() => setEditingId(item.id)}
+              onDeletePress={() => setDeletingId(item.id)}
               onPress={() => {
                 const isExpanding = expandedSubscriptionId !== item.id;
                 posthog?.capture(
@@ -87,6 +96,30 @@ const Subscriptions = () => {
           contentContainerClassName="pb-20"
         />
       </KeyboardAvoidingView>
+      {editingSubscription && (
+        <EditSubscriptionModal
+          key={editingSubscription.id}
+          subscription={editingSubscription}
+          onClose={() => setEditingId(null)}
+          onSave={(edits) => {
+            updateSubscription(editingSubscription.id, edits);
+            setEditingId(null);
+          }}
+        />
+      )}
+      {deletingSubscription && (
+        <DeleteSubscriptionModal
+          name={deletingSubscription.name}
+          onClose={() => setDeletingId(null)}
+          onConfirm={() => {
+            deleteSubscription(deletingSubscription.id);
+            setExpandedSubscriptionId((current) =>
+              current === deletingSubscription.id ? null : current,
+            );
+            setDeletingId(null);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };

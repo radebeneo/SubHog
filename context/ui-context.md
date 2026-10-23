@@ -91,6 +91,17 @@ classes for repeating patterns:
 - **Home screen**: `SafeAreaView` → `ScrollView` → header row → balance card → upcoming horizontal scroll → active subscription list (vertical).
 - **Subscription card inline expand**: Tapping a `sub-card` toggles an `expanded` boolean in local state. The card animates to show `sub-body` details below. Use `react-native-reanimated` for the height animation.
 - **Add Subscription modal**: React Native `<Modal>` with `transparent` + `animationType="slide"`. Renders as a bottom sheet using `modal-container` (`.mt-auto.max-h-[85%].rounded-t-3xl`). Backdrop is `modal-overlay` (`.bg-black/50`).
+- **Subscription management**: Expanded Subscriptions-tab cards show Edit/Delete
+  pill actions (`subscription-actions__*`). Only the header toggles expansion,
+  so management actions never collapse the card. Optional plan and reminder email
+  appear in the details; email copy explicitly states that delivery is not enabled.
+- **Edit Subscription modal**: Prefilled, scrollable bottom sheet using existing
+  modal/auth-input/picker classes and `subscription-editor__*` classes. Fixed
+  Save Changes/Cancel footer, safe-area padding, keyboard avoidance, and inline
+  validation errors. Dates use `YYYY-MM-DD` text inputs; no new picker dependency.
+- **Delete confirmation**: Cross-platform React Native Modal styled with
+  `subscription-delete__*`; explicit Keep Subscription/Delete actions and a
+  warning that removing the record does not cancel provider billing.
 - **Auth screens**: `SafeAreaView` → `ScrollView` → brand block (logo + wordmark) → auth card → form fields → submit button → link to other auth screen.
 - **Onboarding**: Full-viewport layout, no tab bar, single screen with illustration, title, subtitle, and CTA button.
 
