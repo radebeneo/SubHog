@@ -1,7 +1,12 @@
 # CONTRACT-01: Clerk Identity and Owned Subscriptions
 
 **Revision:** 2.2
-**Status:** Owner-approved operative contract; API-03 authorized
+**Status:** Historical contract; superseded for SubHog's new Clerk–Convex backend (2026-10-23).
+
+The content below describes the disconnected legacy API only. It is not the
+contract for the approved Convex integration. In particular, MongoDB, REST
+endpoints, application-user provisioning and legacy token-verifier assumptions
+must not be reused. See [Convex setup and Unit 1](../convex-setup.md).
 
 Revision 2.2 promotes the owner-approved database-read error envelopes and
 `USER_NOT_FOUND` clarification into the operative endpoint contract. It does

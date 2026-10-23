@@ -1,3 +1,4 @@
+import { BackendConnectionCheck } from "@/components/BackendConnectionCheck";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { useAuth } from "@clerk/expo";
 import { styled } from "nativewind";
@@ -37,6 +38,7 @@ const Settings = () => {
           Sign Out
         </Text>
       </Pressable>
+      <BackendConnectionCheck />
     </SafeAreaView>
   );
 };

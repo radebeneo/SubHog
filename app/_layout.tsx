@@ -1,4 +1,5 @@
 import "@/global.css";
+import { AppBackendProvider } from "@/context/AppBackendProvider";
 import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
@@ -15,7 +16,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 function getClerkPublishableKey(): string {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  if (!publishableKey || publishableKey === "pk_live_REPLACE_ME") {
+  if (!publishableKey || publishableKey.endsWith("_REPLACE_ME")) {
     throw new Error(
       "Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in the local environment or CI/EAS build environment",
     );
@@ -124,7 +125,11 @@ function RootLayoutContent() {
     );
   }
 
-  const navigation = <Stack screenOptions={{ headerShown: false }} />;
+  const navigation = (
+    <AppBackendProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </AppBackendProvider>
+  );
 
   if (!posthog) return navigation;
 

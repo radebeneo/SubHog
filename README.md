@@ -25,7 +25,23 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## Frontend-only demo
+## Clerk–Convex foundation (Unit 1)
+
+Convex `1.48.0` is installed; Expo is aligned to the existing `57.0.31` lockfile.
+Follow **[Development setup](docs/convex-setup.md)** to connect your Clerk
+development instance and a fresh Convex development deployment.
+
+Unit 1 adds the authenticated provider, an empty schema, ownership helpers and a
+read-only identity query. In development, Settings includes a connection check.
+It reports configuration, authentication and query states separately.
+Subscription persistence is not implemented yet. Switching Clerk accounts or
+sessions resets route-local state and closes the previous Convex client.
+
+The legacy REST/MongoDB contract is superseded for this backend. Existing API
+helpers/tests are historical and disconnected. Supabase Storage is deferred
+because the current app has no upload feature.
+
+## Current in-memory subscription flow
 
 Clerk authentication requires `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Subscription
 screens do not require a backend or read `EXPO_PUBLIC_API_BASE_URL`.

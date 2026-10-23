@@ -4,7 +4,53 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Subscription editing and confirmed deletion
+- Clerk–Convex Unit 1: approved local authentication foundation and guided development setup.
+
+### Clerk–Convex Unit 1 (2026-10-23)
+
+- User approved `convex@1.48.0` and alignment to already-locked Expo `57.0.31`.
+- User selected guided development setup and subsequently reported successful
+  `npx convex dev` synchronization against development deployment
+  `radebeneo17:subhog:dev/neo-radebe` at
+  `https://flippant-dolphin-108.eu-west-1.convex.cloud`.
+- Found and reproduced a client configuration bug rejecting regional deployment
+  hosts. Updated URL validation to accept one optional region label and added
+  regression cases while retaining HTTPS, origin-only and credential checks.
+  The regional regression now passes; all 10 auth/configuration tests, app and
+  backend/test typechecks, and uncached lint pass (zero errors, two existing
+  clsx import warnings). Live Clerk identity acceptance is pending in Settings.
+- Implemented the root Clerk–Convex provider with session-keyed route/client
+  lifetime and deferred cleanup that tolerates Strict Mode effect replay.
+  Navigation mounts synchronously for existing Clerk completion callbacks.
+- Added an empty schema, required Clerk issuer/audience configuration, verified
+  identity/ownership helpers and the read-only `identity:current` query.
+- Added development-only Settings diagnostics for configuration, socket connection,
+  authentication/refresh, query loading, identity mismatch, success and error/retry.
+- Before development configuration, bootstrapped Convex bindings locally with the
+  installed CLI's internal `--system-udfs` path. Use normal codegen or `convex dev`
+  now that the user has configured a development target.
+- Added development setup/acceptance instructions in `docs/convex-setup.md`,
+  including regional URLs, updated the public environment example and marked
+  the old contract historical.
+- Earlier verification passed 17 subscription editing/calendar regression tests
+  and the iOS production bundle export after lifecycle refinement:
+  `npx expo export --platform ios --max-workers 2 --output-dir dist/unit1-ios`.
+  Local Unit 1 implementation and the regional URL fix are ready; checking the
+  signed-in development build is the next user-guided step.
+- Browser navigation reached `/sign-in`, but the snapshot was empty and showing
+  the browser panel timed out. Metro logged an error at the unchanged
+  `SocialAuthButtons.tsx:109` SVG; its runtime cause is not confirmed.
+  Browser and device acceptance are not claimed. The review panel opened.
+- The assistant has not changed remote resources or dashboard settings.
+  The user reported successful development synchronization; live JWT verification,
+  token refresh and account/session switching still require acceptance testing.
+- Unrelated untracked `assets/images/desktop.ini` and `empty-state.png` appeared
+  during implementation and were left untouched.
+- Empty schema avoids inventing unapproved financial/preference rules.
+- Subsequent units require amount/text limits, excess-decimal and rounding policy,
+  recurrence/timezone policy, categories, status/reactivation, and preference fields.
+- Prepare authorized create/list/update/delete before the shared data-source cutover.
+- This phase supersedes the older local-storage and REST reconnection roadmap below.
 
 ### Edit/delete (2026-10-23)
 
@@ -32,9 +78,10 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Edit existing subscriptions from the Subscriptions screen and remove records after confirmation.
-- Store optional reminder email only; no delivery, backend reconnection, or new packages.
-- Preserve shared in-memory state and dynamic Home/Insights updates.
+- Complete Unit 1's local Clerk–Convex foundation and guide development configuration.
+- Verify the deployed identity query and session isolation after a development target is selected.
+- Keep subscriptions in memory until authorized CRUD and financial rules are ready.
+- Reminder email remains storage-only metadata; delivery is outside this scope.
 
 ### Dynamic Home (2026-10-23)
 
@@ -63,8 +110,9 @@ Update this file after every meaningful implementation change.
 ## In Progress
 
 - Manual device acceptance: reload Expo, sign in, verify empty Home with R0.00 monthly spend and no next renewal; add monthly R120 and yearly R1200 subscriptions, confirm R220.00 monthly spend and sorted Upcoming cards with full billing prices; expand cards, check Subscriptions/Insights, and sign out.
-- Durable local storage and reminder delivery remain future work. Edit/delete
-  is implemented as described in the current-phase entry above.
+- Convex development setup and live authentication acceptance are next.
+  Subscription persistence will use Convex in a subsequent approved unit.
+  Edit/delete is implemented locally; reminder delivery is outside current scope.
 
 ## Completed
 
@@ -120,9 +168,10 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-1. Complete the frontend demo device acceptance checklist above.
-2. Decide whether to add durable local storage in a separate feature.
-3. Reconnect API integration only when explicitly requested.
+1. Follow `docs/convex-setup.md` to activate Clerk's development integration and select a fresh Convex development deployment.
+2. Complete live identity/JWT rejection and device/session-isolation acceptance.
+3. Resolve billing, amount, metadata and preference rules before the next approved unit.
+4. Implement owned subscription CRUD before switching shared screens to Convex hooks.
 
 ## Open Questions
 

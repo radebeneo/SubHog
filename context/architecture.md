@@ -1,5 +1,36 @@
 # Architecture Context
 
+## Approved Clerk–Convex integration (2026-10-23)
+
+This section supersedes earlier frontend-only and disconnected REST/MongoDB
+integration assumptions. Clerk is the sole authentication authority. Convex will
+own persisted subscriptions, preferences, validation, billing schedules and derived
+dashboard/insight values. There is no application-user provisioning step.
+
+Unit 1 installs `convex@1.48.0` and aligns installed Expo with the existing lockfile
+(`57.0.31`). It adds a root Clerk–Convex provider, session-scoped client/UI lifetime,
+an empty schema, verified-identity/ownership helpers, a read-only identity query,
+and a development-only connection check in Settings. No subscription table or
+mutation is introduced until the remaining financial and metadata rules are agreed.
+The current SubscriptionContext and subscription interactions remain in memory.
+
+- Ownership uses Convex's verified `identity.tokenIdentifier` (issuer + subject),
+  never an email or an owner supplied by a client.
+- Every protected function must require identity. Future ID-based reads/writes
+  must check the fetched document's owner before exposing or changing it.
+- Convex's configured Clerk issuer and audience `convex` govern token verification.
+- The root provider covers both authenticated tabs and standalone detail routes.
+  Changing Clerk user/session remounts its descendants and closes the old client.
+- Missing configuration preserves the current local flow; the development check
+  explicitly reports that Convex is unconfigured. It never implies persistence.
+- Server data will use Convex hooks, gated on `useConvexAuth`; local state remains
+  for drafts, search, and modals. No REST wrapper or additional state library.
+- No uploads were found; Supabase Storage is deferred.
+- Setup is development-only and user-guided. Do not use the EAS connect shortcut
+  to overwrite production/preview configuration for this unit.
+- See `docs/convex-setup.md` for setup and acceptance checks. Legacy API code/tests
+  are retained as historical code, not contracts for this backend.
+
 ## Stack
 
 | Layer | Technology | Role |

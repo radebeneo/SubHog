@@ -7,6 +7,21 @@ monitor, manage, and understand their recurring subscriptions. Users sign up, ad
 subscriptions with billing details, and get a clear view of their total monthly spend, upcoming
 renewals, and per-category spending insights — all from a clean, warm-toned mobile UI.
 
+## Approved backend direction (2026-10-23)
+
+Clerk remains the sole authentication authority, including existing social login.
+Convex is approved as the fresh application backend for subscriptions, preferences,
+validation and calculations. This supersedes the older offline-only, no-database,
+USD-only and no-OAuth assumptions below. Current creation supports ZAR and
+Monthly/Yearly cycles; additional currency/cycle support requires an explicit decision.
+
+Unit 1 establishes only the local Clerk–Convex foundation and a development
+connection check. Subscription persistence is a subsequent unit. No uploads are
+currently required, so Supabase Storage is deferred. There is no legacy API
+provisioning, demo seeding, payment processing, provider cancellation, push/email
+delivery, historical payment reporting, or full offline synchronization in this scope.
+See `docs/convex-setup.md` for guided development configuration.
+
 ## Current Implementation (2026-10-23)
 
 Clerk handles real authentication. Subscription screens start empty and share an
