@@ -4,6 +4,11 @@ import {
   isValidProfileName,
   normalizeProfileNamePart,
 } from "@/features/profile/profile-name";
+import {
+  PASSWORD_MIN_LENGTH,
+  isClerkFormValidationError,
+  isValidPassword,
+} from "@/features/auth/auth-state";
 import { SocialAuthButtons } from "@/features/auth/social-auth-buttons";
 import { useAuth, useSignUp } from "@clerk/expo";
 import { Link, useRouter, type Href } from "expo-router";
@@ -45,11 +50,11 @@ const SignUp = () => {
   const emailValid =
     emailAddress.length === 0 ||
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
-  const passwordValid = password.length === 0 || password.length >= 8;
+  const passwordValid = password.length === 0 || isValidPassword(password);
   const formValid =
     profileNameValid &&
     emailAddress.length > 0 &&
-    password.length >= 8 &&
+    isValidPassword(password) &&
     emailValid;
 
   const handleSubmit = async () => {
@@ -63,8 +68,10 @@ const SignUp = () => {
     });
 
     if (error) {
-      posthog?.captureException(error, { auth_flow: "sign_up" });
-      console.error(JSON.stringify(error, null, 2));
+      if (!isClerkFormValidationError(error)) {
+        posthog?.captureException(error, { auth_flow: "sign_up" });
+        console.error(JSON.stringify(error, null, 2));
+      }
       return;
     }
 
@@ -308,7 +315,7 @@ const SignUp = () => {
                   />
                   {passwordTouched && !passwordValid && (
                     <Text className="auth-error">
-                      Password must be at least 8 characters
+                      Password must be at least {PASSWORD_MIN_LENGTH} characters
                     </Text>
                   )}
                   {errors.fields.password && (
@@ -318,7 +325,7 @@ const SignUp = () => {
                   )}
                   {!passwordTouched && (
                     <Text className="auth-helper">
-                      Minimum 8 characters required
+                      Minimum {PASSWORD_MIN_LENGTH} characters required
                     </Text>
                   )}
                 </View>

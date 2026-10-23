@@ -87,3 +87,24 @@ export function getAuthErrorMessage(
 
   return fallback;
 }
+
+// Must match the password minimum configured in the Clerk instance.
+export const PASSWORD_MIN_LENGTH = 15;
+
+export function isValidPassword(password: string): boolean {
+  return password.length >= PASSWORD_MIN_LENGTH;
+}
+
+export function isClerkFormValidationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const { errors } = error as { errors?: unknown };
+  return (
+    Array.isArray(errors) &&
+    errors.length > 0 &&
+    errors.every(
+      (entry) =>
+        typeof entry?.code === "string" && entry.code.startsWith("form_"),
+    )
+  );
+}
