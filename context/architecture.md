@@ -61,6 +61,10 @@ There is no in-memory fallback when configuration or authentication fails.
   retaining newest-first ordering. Existing client-side search and summaries
   require all pages; do not show partial totals as complete. Backend aggregate
   calculations remain a separate unit.
+- The Subscriptions screen filters the complete shared snapshot, then displays
+  client-side pages of at most 20 cards. Page selection and measured list dimensions
+  are local UI state; this does not change native backend pagination or summary inputs.
+  Pure pagination and overflow helpers live in `lib/subscription-list.ts`.
 - A small query bridge isolates thrown query errors from route children, so
   retrying reads does not unmount form drafts. Context holds only the latest
   server-query snapshot, never optimistically created or edited records.

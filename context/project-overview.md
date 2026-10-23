@@ -116,7 +116,9 @@ API helpers and contract tests are retained but disconnected.
 - Inline expanded card showing full subscription details
 - Edit subscription details and confirm Delete from expanded Subscriptions-tab cards
 - Optional reminder email persisted in Convex only; automated delivery is not implemented
-- All subscriptions list view (Subscriptions tab)
+- Searchable subscriptions list (Subscriptions tab), with up to 20 cards per page
+  and Previous/Next controls when more matches exist; scrolling is enabled only
+  when the displayed cards exceed the available space
 - Standalone detail route remains a scaffold; full-screen implementation is outside Unit 3
 
 ### Insights Tab

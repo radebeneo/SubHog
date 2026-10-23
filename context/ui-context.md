@@ -89,6 +89,12 @@ classes for repeating patterns:
 - **Root layout**: Stack navigator with `headerShown: false`. All navigation chrome is rendered by individual screens.
 - **Tab bar**: Bottom tabs with 4 items: Home, Subscriptions, Insights, Settings. Active tab uses `tabs-active` (accent background pill).
 - **Home screen**: `SafeAreaView` → `ScrollView` → header row → balance card → upcoming horizontal scroll → active subscription list (vertical).
+- **Subscriptions list**: Display at most 20 search matches per page. Use
+  `subscription-list__body` to reserve space above bottom navigation and fixed
+  `subscription-pagination__*` Previous/Next pill controls when multiple pages exist.
+  Enable scrolling only for measured overflow; disable bounce and overscroll.
+  Center the existing `subscription-empty__*` illustration for empty lists or
+  unmatched searches, only once data is ready.
 - **Subscription card inline expand**: Tapping a `sub-card` toggles an `expanded` boolean in local state. The card animates to show `sub-body` details below. Use `react-native-reanimated` for the height animation.
 - **Add Subscription modal**: React Native `<Modal>` with `transparent` + `animationType="slide"`. Renders as a bottom sheet using `modal-container` (`.mt-auto.max-h-[85%].rounded-t-3xl`). Backdrop is `modal-overlay` (`.bg-black/50`).
 - **Subscription management**: Expanded Subscriptions-tab cards show Edit/Delete

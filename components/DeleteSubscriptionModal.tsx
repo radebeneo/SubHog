@@ -44,7 +44,7 @@ export default function DeleteSubscriptionModal({
                 disabled={pending}
                 onPress={handleClose}
               >
-                <Text className="auth-label">Keep Subscription</Text>
+                <Text className="auth-label">Keep</Text>
               </Pressable>
               <Pressable
                 className={clsx("subscription-delete__confirm", (!canWrite || pending) && "opacity-50")}

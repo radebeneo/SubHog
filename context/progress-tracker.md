@@ -6,6 +6,29 @@ Update this file after every meaningful implementation change.
 
 - Clerk–Convex Unit 3: implementation and local validation complete; real-device/live-account acceptance remains pending.
 
+### Subscriptions scrolling and pagination (2026-10-23)
+
+- User requested a stationary Subscriptions screen when cards fit, with a maximum
+  of 20 displayed cards per page before pagination.
+- Added client-side pagination after search filtering, with Previous/Next controls
+  and a page count above the bottom navigation. Search changes reset to page one;
+  deleting or editing away the final page clamps to the remaining page.
+- Scroll is enabled only when measured card content exceeds the available list
+  height. Bounce and overscroll are disabled; empty illustrations stay stationary.
+  Changing pages resets the list position and collapses expanded details.
+- Preserved ready-only empty images and existing loading/error notices. The shared
+  complete Convex snapshot and Home/Insights calculations remain unchanged.
+- Added pure pagination/overflow tests and simulated screen-state wiring tests.
+  Validation: npm run typecheck passes; npm run lint has zero errors and the two
+  existing clsx warnings; focused Vitest suite passes 55 tests across five files;
+  git diff --check passes.
+- Simulated screen tests do not mount React Native or verify physical scrolling.
+  Device verification is not claimed. Manual checks: fitting and overflowing
+  cards, expanded/collapsed cards, 20 versus 21 subscriptions, page navigation,
+  filtering from a later page, and deletion of the last card on the final page.
+- No packages, assets, backend functions, deployment or remote settings changed.
+  CM review panel opened; changes remain uncommitted.
+
 ### Subscription UI connection — Unit 3 (2026-10-23)
 
 - User approved the next unit: replace the in-memory UI source with the existing
