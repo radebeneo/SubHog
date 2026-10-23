@@ -1,6 +1,7 @@
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
+import SubscriptionDataNotice from "@/components/SubscriptionDataNotice";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
@@ -12,7 +13,7 @@ import { posthog, sanitizePostHogProperties } from "@/lib/posthog";
 import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,7 +21,7 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const { subscriptions, addSubscription } = useSubscriptions();
+  const { subscriptions, addSubscription, status, canWrite } = useSubscriptions();
   const { monthlySpend, nextRenewalDate, upcomingSubscriptions } =
     useSubscriptionSummary();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
@@ -34,7 +35,8 @@ export default function App() {
     >
       <FlatList
         ListHeaderComponent={
-          <>
+          <Fragment>
+            <SubscriptionDataNotice />
             <View className="home-header">
               <View className="home-user">
                 <Image
@@ -56,12 +58,12 @@ export default function App() {
               <Text className="home-balance-label">Monthly spend</Text>
               <View className="home-summary__row">
                 <Text className="home-balance-amount">
-                  {formatCurrency(monthlySpend)}
+                  {status === "ready" ? formatCurrency(monthlySpend) : "—"}
                 </Text>
                 <View className="home-summary__renewal">
                   <Text className="home-summary__caption">Next renewal</Text>
                   <Text className="home-balance-date">
-                    {nextRenewalDate
+                    {status !== "ready" ? "—" : nextRenewalDate
                       ? dayjs(nextRenewalDate).format("DD MMM")
                       : "None"}
                   </Text>
@@ -72,7 +74,7 @@ export default function App() {
             <View className="mb-5">
               <ListHeading title="Upcoming" />
               <FlatList
-                data={upcomingSubscriptions}
+                data={status === "ready" ? upcomingSubscriptions : []}
                 horizontal
                 renderItem={({ item }) => (
                   <UpcomingSubscriptionCard {...item} />
@@ -80,12 +82,12 @@ export default function App() {
                 keyExtractor={(item) => item.id}
                 showsHorizontalScrollIndicator={false}
                 ListEmptyComponent={
-                  <Text className="home-empty-state">No upcoming renewals.</Text>
+                  status === "ready" ? <Text className="home-empty-state">No upcoming renewals.</Text> : null
                 }
               />
             </View>
             <ListHeading title="All Subscriptions" />
-          </>
+          </Fragment>
         }
         data={subscriptions}
         renderItem={({ item }) => (
@@ -109,29 +111,23 @@ export default function App() {
         )}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View>
-            <Text className="home-empty-state">
-              No subscriptions yet. Add your first to start tracking your spending.
-            </Text>
-            <Pressable
-              className="auth-button"
-              accessibilityRole="button"
-              onPress={() => setIsCreateModalVisible(true)}
-            >
-              <Text className="auth-button-text">Add subscription</Text>
-            </Pressable>
-          </View>
-        }
+        ListEmptyComponent={status === "ready" ? (
+          <Text className="home-empty-state">
+            No subscriptions yet. Add your first to start tracking your spending.
+          </Text>
+        ) : null}
         extraData={expandedSubscriptionId}
         ItemSeparatorComponent={() => <View className="h-4" />}
         contentContainerClassName="pb-20"
       />
-      <CreateSubscriptionModal
-        visible={isCreateModalVisible}
-        onClose={() => setIsCreateModalVisible(false)}
-        onCreate={addSubscription}
-      />
+      {isCreateModalVisible && (
+        <CreateSubscriptionModal
+          visible
+          canWrite={canWrite}
+          onClose={() => setIsCreateModalVisible(false)}
+          onCreate={addSubscription}
+        />
+      )}
     </SafeAreaView>
   );
 }

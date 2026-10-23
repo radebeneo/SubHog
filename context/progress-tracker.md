@@ -4,7 +4,223 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Subscription editing and confirmed deletion
+- Backend calculation Unit 4: implemented, locally tested and development-synced.
+  Home/Insights integration and reminder delivery remain separate. Unit 3
+  create/edit/delete restart persistence is confirmed per user report;
+  remaining lifecycle/UI acceptance checks are still pending.
+
+### Backend calculations — Unit 4 (2026-10-23)
+
+- Added authenticated dashboard.summary with explicit timestamp input, verified
+  tokenIdentifier ownership and bounded by_ownerId reads. No schema changes.
+- Added pure integer-twelfths spending, annual run-rate, independently rounded
+  categories/average and original-anchor monthly/yearly renewal calculations.
+  Johannesburg dates/countdowns use explicit UTC+02:00, not host-local time.
+- Missing/invalid anchors remain unknown; dates are never patched by calculations.
+  Upcoming output is bounded separately from totals and exposes hasMoreUpcoming.
+- Query accepts up to 1000 owned subscriptions; larger accounts receive
+  SUMMARY_LIMIT_EXCEEDED rather than partial totals. CRUD remains unrestricted
+  by this guard. Larger-scale aggregation needs a separate approved component unit.
+- 64 new calculation/query tests pass; 140 total Convex tests and 10 existing
+  auth/config tests pass. Calculation suite also passes in America/New_York.
+  Tests cover rounding boundaries, empty/mixed accounts, all categories, past/
+  future/missing anchors, month ends/leap/century rules, Johannesburg midnight,
+  >100-row summaries, read-limit boundaries, issuer/account isolation and CRUD
+  recalculation. These are mocked/pure tests, not native or live JWT evidence.
+- App/backend/test typechecks pass. Uncached lint: zero errors, two existing clsx
+  warnings. All 61 focused UI/form/simulated-hook regression tests pass.
+- npx convex dev --once --typecheck enable synchronized successfully to personal
+  development deployment flippant-dolphin-108 (radebeneo17:subhog:dev/neo-radebe).
+  Initial codegen emitted upload messages despite describing itself as local;
+  its test-seed type error was fixed before the successful explicit dev sync.
+- Public deployed dashboard:summary query without a token returned
+  UNAUTHENTICATED; no admin identity or remote subscription mutation was used.
+  This verifies live signed-out rejection, not authenticated screen behavior.
+- Documented contract/guard in docs/subscription-calculations.md and reconciled
+  architecture, overview, standards, README and backend policy.
+- No packages, assets, screens, schema, production settings or remote seed data
+  changed. CM review panel opened. No commit.
+- Home/Insights still use client calculations pending Unit 5. Reminder delivery,
+  canceled drafts, optional-field clearing, reconnect/error recovery,
+  duplicate-tap controls and native pagination/empty-state checks remain separate.
+
+### User-reported subscription persistence acceptance (2026-10-23)
+
+- User reports created subscriptions survive restart and sign-out/sign-in for
+  specific users, then confirms edits and deletions persist across restart.
+  Recorded in docs/subscription-ui-acceptance.md as user-reported live-use
+  evidence, not assistant-observed testing or mocked backend evidence.
+- Device/OS/app version, number of tested accounts and exact restart method were
+  not supplied. Do not infer comprehensive session isolation from these reports.
+- Remaining checks: optional-field clearing, canceled drafts, reconnect/error
+  recovery, pending controls, delayed work during account switching, and native
+  pagination/empty-state layout.
+- Core persistence acceptance is confirmed per user report. The next planned
+  development unit is backend renewal and spending calculations, followed by
+  Home/Insights integration. Remaining acceptance checks stay tracked separately;
+  this report does not authorize implementation, deployment or a commit.
+
+### Subscriptions empty-state positioning (2026-10-23)
+
+- User screenshot showed `empty-state.png` extending behind the bottom navigation.
+- Moved ready-only empty and no-search-match artwork outside the FlatList into a
+  centered, non-scrollable viewport within the existing tab-bar-reserved list body.
+  A bounded, shrinkable frame and contain resizing keep the existing artwork
+  within that viewport; the asset, card rendering and pagination are unchanged.
+- Updated simulated screen regressions for empty/search states, transitions back
+  to cards, final-record removal and non-ready data states.
+- Validation: npm run typecheck passes; focused Vitest suite passes 61 tests across
+  five files; npm run lint completes on retry with zero errors and two existing
+  clsx import warnings (first attempt timed out); git diff --check passes.
+- Simulations do not verify native layout or pixels. Browser navigation redirected
+  to /sign-in with no readable text or controls, so authenticated visual acceptance
+  was not obtained. Check empty lists and unmatched searches above the tab bar in
+  Expo Go, including the search keyboard open and closed.
+- Review panel request returned “Another browser operation is still running.”
+  Changes were reviewed through the local Git diff; no panel success is claimed.
+- No packages, assets, backend functions or remote settings changed. No commit.
+
+### Subscriptions scrolling and pagination (2026-10-23)
+
+- User requested a stationary Subscriptions screen when cards fit, with a maximum
+  of 20 displayed cards per page before pagination.
+- Added client-side pagination after search filtering, with Previous/Next controls
+  and a page count above the bottom navigation. Search changes reset to page one;
+  deleting or editing away the final page clamps to the remaining page.
+- Scroll is enabled only when measured card content exceeds the available list
+  height. Bounce and overscroll are disabled; empty illustrations stay stationary.
+  Changing pages resets the list position and collapses expanded details.
+- Preserved ready-only empty images and existing loading/error notices. The shared
+  complete Convex snapshot and Home/Insights calculations remain unchanged.
+- Added pure pagination/overflow tests and simulated screen-state wiring tests.
+  Validation: npm run typecheck passes; npm run lint has zero errors and the two
+  existing clsx warnings; focused Vitest suite passes 55 tests across five files;
+  git diff --check passes.
+- Simulated screen tests do not mount React Native or verify physical scrolling.
+  Device verification is not claimed. Manual checks: fitting and overflowing
+  cards, expanded/collapsed cards, 20 versus 21 subscriptions, page navigation,
+  filtering from a later page, and deletion of the last card on the final page.
+- No packages, assets, backend functions, deployment or remote settings changed.
+  CM review panel opened; changes remain uncommitted.
+
+### Subscription UI connection — Unit 3 (2026-10-23)
+
+- User approved the next unit: replace the in-memory UI source with the existing
+  owned Convex API. Mocked backend tests remain distinct from real-device acceptance.
+- Defined the cutover, pagination, auth/error states and draft/write lifecycle in
+  architecture.md before implementation. Existing summaries remain client-side
+  until the separate agreed calculation unit.
+- Implemented the reactive native pagination bridge, awaited create/update/remove,
+  shared approved form validation, sanitized errors and immediate submission/
+  dismissal locks. Complete-list gating is in Home/Subscriptions/Insights; no local fallback.
+- Read failure/retry resets only the bridge, retaining complete server snapshots
+  and mounted drafts. Account/session lifetime invalidates delayed callbacks.
+  Create mounts only while open; Edit has the approved clearable category picker.
+- Home/Insights fragment repair is complete. App and backend/test typechecks pass;
+  76 Convex function tests, 10 auth/configuration tests, 17 existing editing/calendar
+  tests and 41 focused form/display/icon/simulated-hook tests pass. Uncached lint has zero errors
+  and two existing clsx warnings. iOS export to dist/unit3-ios succeeds.
+- Focused simulations manually commit effects and mock Convex hooks; they are not
+  React/native mounting or live persistence evidence. Added actual display-adapter/
+  cents round-trip and serializable icon lookup regressions, with only native
+  assets and HTTP responses stubbed. Final focused rerun passes all 41 tests.
+- Reviewed changed provider, forms, screen wiring and all new files. Reconciled
+  current overview/architecture/standards/README claims with the server-backed
+  implementation; retained historical milestones as history. git diff --check
+  passes, and the CM review panel opened without approving or committing changes.
+- Browser #root exists and its document is ready at http://localhost:8081/, but no
+  visible text/controls are exposed; screenshot returns “Tool result missing.”
+  No authenticated device acceptance was obtained. The concrete runtime blocker
+  and manual checklist are in docs/subscription-ui-acceptance.md.
+- No packages, assets, backend/schema, deployments or remote configuration changed
+  in Unit 3. Changes remain uncommitted; no pushes or commits.
+
+### Subscription backend — Unit 2 (2026-10-23)
+
+- User reports Convex identity verification succeeded for a different account.
+  Records disappeared after restart and sign-out/sign-in, as expected for the
+  current in-memory UI. This is user-reported acceptance, not automated device testing.
+- User approved the rules and limits in `docs/subscription-backend.md`: ZAR,
+  Monthly/Yearly, integer cents, amount/text limits, decimal rejection,
+  optional metadata, calendar dates, categories and active-only creation.
+- Africa/Johannesburg, anchored month-end recurrence and final-total half-up
+  rounding are agreed for the subsequent calculation unit.
+- User approved convex-test, Vitest and @edge-runtime/vm development dependencies.
+- Implemented the owner-indexed subscription schema and protected
+  create/list/get/update/delete functions, shared validation, integer-cent parsing,
+  optional-field clearing and serializable icons.
+- Added 76 Convex function/validation tests; all pass alongside the 10 existing
+  auth/configuration tests. Coverage includes signed-out rejection, cross-account
+  and cross-issuer access, missing/foreign IDs, failed-write atomicity and pagination.
+- App and backend/test typechecks pass. Uncached lint has zero errors and the two
+  existing clsx import warnings.
+- `npx convex dev --once --typecheck enable` successfully synchronized schema and
+  functions to personal development deployment `flippant-dolphin-108`.
+- Public no-token HTTP queries to deployed `identity:current` and
+  `subscriptions:list` both returned UNAUTHENTICATED.
+- Installed approved dev tools: convex-test 0.0.64, Vitest 5.0.5 and
+  @edge-runtime/vm 5.0.0. Restored all previously locked package versions; Vite's
+  newer PostCSS requirements are nested under the test tooling. Installed versions
+  match the lockfile.
+- Dependency installation reported 42 audit findings (15 moderate, 26 high,
+  1 critical); the audit did not name the added test tools or Vite/PostCSS as
+  vulnerable. Broad dependency remediation is outside this unit.
+- Unit 2 backend is complete. UI cutover and dashboard calculations follow as
+  separate units. The current screens still use in-memory subscriptions.
+- Mocked ownership tests do not establish live JWT or device behavior. Real-session
+  writes, restart persistence, token refresh/reconnect and comprehensive session
+  isolation remain acceptance checks for subsequent work.
+
+### Clerk–Convex Unit 1 (2026-10-23)
+
+- User approved `convex@1.48.0` and alignment to already-locked Expo `57.0.31`.
+- User selected guided development setup and subsequently reported successful
+  `npx convex dev` synchronization against development deployment
+  `radebeneo17:subhog:dev/neo-radebe` at
+  `https://flippant-dolphin-108.eu-west-1.convex.cloud`.
+- Found and reproduced a client configuration bug rejecting regional deployment
+  hosts. Updated URL validation to accept one optional region label and added
+  regression cases while retaining HTTPS, origin-only and credential checks.
+  The regional regression now passes; all 10 auth/configuration tests, app and
+  backend/test typechecks, and uncached lint pass (zero errors, two existing
+  clsx import warnings).
+- User supplied a mobile Settings screenshot showing
+  “Connected. Convex verified your current Clerk account.”
+  This confirms successful live identity verification for the current session,
+  based on user-provided evidence; it is not a full device acceptance test.
+- Implemented the root Clerk–Convex provider with session-keyed route/client
+  lifetime and deferred cleanup that tolerates Strict Mode effect replay.
+  Navigation mounts synchronously for existing Clerk completion callbacks.
+- Added an empty schema, required Clerk issuer/audience configuration, verified
+  identity/ownership helpers and the read-only `identity:current` query.
+- Added development-only Settings diagnostics for configuration, socket connection,
+  authentication/refresh, query loading, identity mismatch, success and error/retry.
+- Before development configuration, bootstrapped Convex bindings locally with the
+  installed CLI's internal `--system-udfs` path. Use normal codegen or `convex dev`
+  now that the user has configured a development target.
+- Added development setup/acceptance instructions in `docs/convex-setup.md`,
+  including regional URLs, updated the public environment example and marked
+  the old contract historical.
+- Earlier verification passed 17 subscription editing/calendar regression tests
+  and the iOS production bundle export after lifecycle refinement:
+  `npx expo export --platform ios --max-workers 2 --output-dir dist/unit1-ios`.
+  Local Unit 1 implementation, regional URL validation and the current session's
+  live identity connection are confirmed; remaining auth acceptance follows.
+- Earlier browser navigation reached `/sign-in`, but the snapshot was empty and
+  showing the browser panel timed out. Metro logged an error at the unchanged
+  `SocialAuthButtons.tsx:109` SVG; its runtime cause is not confirmed.
+  Browser acceptance is not claimed. The review panel opened.
+- The assistant has not changed remote resources or dashboard settings.
+  Signed-out/invalid-token rejection, token refresh, reconnect, protected-route
+  behavior and account/session switching still require live acceptance testing.
+  Subscription persistence and cross-account document access await a later unit.
+- Unrelated untracked `assets/images/desktop.ini` and `empty-state.png` appeared
+  during implementation and were left untouched.
+- Empty schema avoids inventing unapproved financial/preference rules.
+- Subsequent units require amount/text limits, excess-decimal and rounding policy,
+  recurrence/timezone policy, categories, status/reactivation, and preference fields.
+- Prepare authorized create/list/update/delete before the shared data-source cutover.
+- This phase supersedes the older local-storage and REST reconnection roadmap below.
 
 ### Edit/delete (2026-10-23)
 
@@ -32,9 +248,13 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Edit existing subscriptions from the Subscriptions screen and remove records after confirmation.
-- Store optional reminder email only; no delivery, backend reconnection, or new packages.
-- Preserve shared in-memory state and dynamic Home/Insights updates.
+- Backend calculation Unit 4 is complete and development-synced; its mocked
+  calculation/auth tests remain distinct from live/device evidence.
+- Next implementation unit: connect Home/Insights to dashboard.summary while
+  preserving layout and loading/error states, then verify reactive CRUD updates.
+- Unit 3 core restart persistence is confirmed per user report. Continue separate
+  native draft/optional clearing/pending/reconnect/JWT/account-switch acceptance.
+- Reminder email remains storage-only metadata; delivery is outside this scope.
 
 ### Dynamic Home (2026-10-23)
 
@@ -62,9 +282,13 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- Manual device acceptance: reload Expo, sign in, verify empty Home with R0.00 monthly spend and no next renewal; add monthly R120 and yearly R1200 subscriptions, confirm R220.00 monthly spend and sorted Upcoming cards with full billing prices; expand cards, check Subscriptions/Insights, and sign out.
-- Durable local storage and reminder delivery remain future work. Edit/delete
-  is implemented as described in the current-phase entry above.
+- Remaining user-assisted device acceptance using docs/subscription-ui-acceptance.md:
+  optional-field clearing, canceled drafts, native pending/error/pagination/empty
+  states, token refresh/reconnect and transient account-switch isolation.
+- Unit 3 uses Convex, not local subscription writes; user reports core CRUD
+  persistence across restart. Unit 4 backend calculations are complete.
+- Home/Insights reactive calculation wiring is next. Reminder delivery and full
+  offline synchronization remain deferred. Earlier notes below are historical.
 
 ## Completed
 
@@ -120,9 +344,16 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-1. Complete the frontend demo device acceptance checklist above.
-2. Decide whether to add durable local storage in a separate feature.
-3. Reconnect API integration only when explicitly requested.
+1. Connect Home/Insights to the completed backend calculations as Unit 5;
+   preserve layouts/loading/error states and verify reactive create/edit/delete.
+2. Complete remaining Unit 3 real-device acceptance: canceled drafts, clearing
+   optional fields, duplicate taps, native pagination/empty states and failures.
+3. Verify real-account switching, refresh/reconnect and session replacement.
+4. Complete remaining invalid-JWT acceptance.
+5. Define preference fields, lifecycle controls and reminder delivery separately.
+
+Unit 2 closeout: `git diff --check` passes. The CM review panel could not open
+because its connection was unavailable; review changes through the local Git diff.
 
 ## Open Questions
 
@@ -136,13 +367,14 @@ Update this file after every meaningful implementation change.
 ## Architecture Decisions
 
 - NativeWind 5 (Tailwind v4) chosen for styling — all tokens live in `global.css`, not `tailwind.config.js`
-- Clerk remains the active authentication authority; the restored subscription demo makes no API requests.
-- SubscriptionContext is the in-memory source of truth, initialized empty (user decision, 2026-10-23).
-- Home derives active monthly spend and next billing occurrences from that list; recurrence preserves the original renewal anchor.
-- Additions and edits are local only and reset on unmount/restart; durable
-  persistence remains future work.
+- Clerk remains the authentication authority; Convex verifies its tokens.
+- Convex is the subscription source of truth; SubscriptionContext shares the latest
+  complete reactive server snapshot. No local-write fallback or optimistic records.
+- Home/Insights retain client-side calculations until Unit 5 wiring; Unit 4's backend query is complete.
+- Forms await confirmed writes. Account/session changes clear only local snapshots,
+  drafts and errors; persisted records remain in the owned backend.
 - Delete removes tracked records after confirmation, not provider billing.
-- Reminder email is optional local metadata only; no emails or analytics payloads
+- Reminder email is optional stored metadata only; no emails or analytics payloads
   containing this address are sent.
 - Expo Router 57 file-based routing — no manual navigator setup in component code
 - `react-native-reanimated` (already installed) will be used for subscription card expand/collapse animation
@@ -152,5 +384,5 @@ Update this file after every meaningful implementation change.
 - The project name is **SubHog** (`app.json` slug: `SubHog`)
 - The color theme is warm: cream background (`#fff9e3`), deep navy text (`#081126`), burnt-orange accent (`#ea7a53`)
 - `global.css` is imported in `app/(tabs)/index.tsx` — confirm it is also imported in `app/_layout.tsx` (it currently is)
-- Home, Subscriptions, and Monthly Insights use the restored frontend demo; Settings retains real Clerk sign-out.
+- Home, Subscriptions and Monthly Insights share Convex data; Settings retains real Clerk sign-out.
 - Expo is running in dev mode (`npx expo start`) — test changes with Expo Go on device

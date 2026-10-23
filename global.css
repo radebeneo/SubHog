@@ -323,6 +323,50 @@
         @apply py-4 text-sm font-sans-medium text-black/60;
     }
 
+    .subscription-list__body {
+        @apply flex-1 pb-20;
+    }
+
+    .subscription-pagination__controls {
+        @apply mt-4 flex-row items-center justify-between gap-2;
+    }
+
+    .subscription-pagination__button {
+        @apply min-h-12 items-center justify-center rounded-full bg-primary px-4 py-3;
+    }
+
+    .subscription-pagination__button--disabled {
+        @apply opacity-35;
+    }
+
+    .subscription-pagination__button-text {
+        @apply text-sm font-sans-bold text-background;
+    }
+
+    .subscription-pagination__label {
+        @apply shrink text-center text-sm font-sans-medium text-primary;
+    }
+
+    .subscription-empty__content {
+        @apply grow justify-center;
+    }
+
+    .subscription-empty__state {
+        @apply items-center;
+    }
+
+    .subscription-empty__viewport {
+        @apply min-h-0 flex-1 items-center justify-center overflow-hidden;
+    }
+
+    .subscription-empty__image {
+        @apply aspect-[1443/1090] w-full max-w-80;
+    }
+
+    .subscription-empty__image-frame {
+        @apply relative shrink overflow-hidden;
+    }
+
     .auth-safe-area {
         @apply flex-1 bg-background;
     }
