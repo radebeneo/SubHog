@@ -79,9 +79,20 @@ Enter credentials yourself; never share keys, tokens, passwords or cookies.
 
 ## Results
 
-- Real-device create/restart persistence: pending.
-- Real-device edit/delete/restart persistence: pending.
-- Live account isolation: pending.
+### User-reported acceptance (2026-10-23)
+
+The user reports that created subscriptions persist across restart and
+sign-out/sign-in for specific users, and subsequently confirms that edits and
+deletions persist across restart. These are user-reported live-use results, not
+assistant-observed or automated tests. Device/OS/app version, account count and
+exact restart method were not supplied.
+
+- Create persistence across restart and sign-out/sign-in: passed per user report.
+- Account-specific persisted subscription visibility: confirmed per user report
+  for tested users; transient data flashes and delayed work during switching
+  remain unverified.
+- Edit/delete persistence across restart: passed per user report.
+- Optional-field clearing and canceled draft behavior: pending.
 - Token refresh/reconnect/session replacement: pending.
 - Native form layout, pending controls and error recovery: pending.
 

@@ -4,7 +4,23 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Clerk–Convex Unit 3: implementation and local validation complete; real-device/live-account acceptance remains pending.
+- Clerk–Convex Unit 3: implementation/local validation complete; create/edit/delete restart persistence and account-specific visibility confirmed by user report; remaining lifecycle/UI acceptance checks pending.
+
+### User-reported subscription persistence acceptance (2026-10-23)
+
+- User reports created subscriptions survive restart and sign-out/sign-in for
+  specific users, then confirms edits and deletions persist across restart.
+  Recorded in docs/subscription-ui-acceptance.md as user-reported live-use
+  evidence, not assistant-observed testing or mocked backend evidence.
+- Device/OS/app version, number of tested accounts and exact restart method were
+  not supplied. Do not infer comprehensive session isolation from these reports.
+- Remaining checks: optional-field clearing, canceled drafts, reconnect/error
+  recovery, pending controls, delayed work during account switching, and native
+  pagination/empty-state layout.
+- Core persistence acceptance is confirmed per user report. The next planned
+  development unit is backend renewal and spending calculations, followed by
+  Home/Insights integration. Remaining acceptance checks stay tracked separately;
+  this report does not authorize implementation, deployment or a commit.
 
 ### Subscriptions empty-state positioning (2026-10-23)
 
