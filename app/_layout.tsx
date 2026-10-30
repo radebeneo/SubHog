@@ -48,6 +48,7 @@ function RootLayoutContent() {
   const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const pathname = usePathname();
   const previousPathname = useRef<string | null>(null);
+  const wasSignedIn = useRef(false);
 
   useEffect(() => {
     void SplashScreen.preventAutoHideAsync().catch((error) => {
@@ -95,8 +96,10 @@ function RootLayoutContent() {
       });
 
       posthog.identify(user.id, profileProperties);
-    } else {
+      wasSignedIn.current = true;
+    } else if (wasSignedIn.current) {
       posthog.reset();
+      wasSignedIn.current = false;
     }
   }, [isSignedIn, isUserLoaded, user]);
 

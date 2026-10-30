@@ -12,13 +12,13 @@ const Settings = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
       posthog?.capture(
         "user_signed_out",
         sanitizePostHogProperties({ source: "settings" }),
       );
-      await posthog?.flush();
-      posthog?.reset();
+      // A failed flush keeps the event queued for retry; it must not block sign-out.
+      await posthog?.flush().catch(() => undefined);
+      await signOut();
     } catch (error) {
       posthog?.captureException(error, { auth_flow: "sign_out" });
       throw error;
